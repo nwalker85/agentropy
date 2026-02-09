@@ -294,7 +294,9 @@ No observer can determine:
 
 ### 8.4 Emergent Pricing
 
-Tool costs are not dynamically negotiated. They are frozen into the system architecture via tool class definitions and agent layer compositions. A 3-layer LLM call costs exactly 3 layers of the appropriate key class. This cost does not fluctuate with demand, time of day, or agent identity. Pricing is structural, not transactional.
+Per-key pricing is structural, not transactional. A 3-layer LLM call costs exactly 3 layers of the appropriate key class. This cost does not fluctuate with demand, time of day, or agent identity.
+
+However, per-visit pricing is dynamic. An environment's total cost is determined by how many key classes it holds — its hazard surface. Under load, an environment can arm itself with additional keys, stripping more layer types per visit without changing the cost of any individual key class. This creates a natural throttle: fixed unit prices with dynamic aggregate cost, governed entirely by key rotation rather than rate negotiation.
 
 ### 8.5 Budget Stratification
 
@@ -336,9 +338,23 @@ All related systems are **protocols** — agreements about how accounting should
 
 ## 11. Limitations and Future Work
 
-### Fixed Pricing
+### Fixed Pricing Per Key — Dynamic Hazard Via Key Count
 
-Tool costs are set at agent creation time. Dynamic pricing (surge pricing, market-based rates) would require a mechanism to modify layer compositions at runtime, which conflicts with the one-way nature of encryption-based mass. Future work could explore accretion-based price adjustment, where gateways accrete "discount layers" onto agents during low-demand periods.
+Tool costs per key class are fixed at agent creation time. The cost of one beta layer is always one beta layer. This favors predictability over market efficiency: you cannot surge-price a single key.
+
+But this does not mean environments cannot react to load. The actual cost of visiting a node is determined by **how many key classes** the environment holds — its hazard surface. An environment under pressure doesn't raise the price per key. It **arms itself with more keys**.
+
+```
+Normal load:    Gateway holds [alpha]         → strips alpha layers only
+High load:      Gateway adds [alpha, beta]    → strips alpha AND beta per visit
+Critical load:  Gateway adds [alpha, beta, gamma] → three classes stripped simultaneously
+```
+
+The conservation law doesn't change. The cost per layer doesn't change. But the agent pays more mass per visit because more of its layers have key affinity with the environment. This is surge pricing expressed as environmental adaptation, not rate negotiation.
+
+Key rotation — the mechanism for adding and removing keys at runtime — already exists in the AMT extensions layer (temporal hazard). An environment recovering from load drops keys, becoming safer. An environment under stress adds keys, becoming more hazardous.
+
+The analogy is not "raise the toll." It is "add more toll booths on the same road." Each booth costs the same. But you go through more of them. Fixed pricing per key is a feature — predictability. Dynamic hazard via key count is the throttle.
 
 ### Single-Class Gateways
 
