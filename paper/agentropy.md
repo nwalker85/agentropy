@@ -1,4 +1,4 @@
-# Agentropy: A Conservation Law That Induces Emergent Behavior Resembling Intelligence
+# Agentropy: A Conservation Law as a Necessary Condition for Life-Like Dynamics
 
 **One Constraint. Four Domains. Zero Violations.**
 
@@ -9,7 +9,7 @@
 
 ## Abstract
 
-We present a single conservation law for autonomous agents — `C_{n+1} + S_{n+1} + L_n = C_n` — and demonstrate that applying it unmodified across four unrelated domains produces emergent behaviors that no participant programmed, no policy engine configured, and no protocol specified. In cross-organizational accountability, the law produces independent auditability across trust boundaries without any party trusting any other. In token economics, it produces market stratification, budget-dependent behavioral divergence, and inflation-proof currency without any pricing protocol. In physical IoT resource management, it produces dynamic load-shedding and power conservation without any management daemon. In population ecology, it produces carrying capacity, boom/bust cycles, niche differentiation, and competitive exclusion without any ecological rules. Across all four domains — 750 agents, 5,415 interactions — zero conservation violations occur. The law is never modified, extended, or parameterized for any domain. It is the same five characters in every experiment. We argue that this is a demonstration of the minimal sufficient condition for intelligence-resembling behavior: not computation, not learning, not optimization — but constraint.
+We present a single conservation law for autonomous agents — `C_{n+1} + S_{n+1} + L_n = C_n` — and demonstrate that applying it unmodified across four unrelated domains produces life-like dynamics that no participant programmed, no policy engine configured, and no protocol specified. In cross-organizational accountability, the law produces independent auditability across trust boundaries without any party trusting any other. In token economics, it produces market stratification, budget-dependent behavioral divergence, and inflation-proof currency without any pricing protocol. In physical IoT resource management, it produces dynamic load-shedding and power conservation without any management daemon. In population ecology, it produces carrying capacity, boom/bust cycles, niche differentiation, and competitive exclusion without any ecological rules. Across all four domains — 750 agents, 5,415 interactions — zero conservation violations occur. The law is never modified, extended, or parameterized for any domain. It is the same five characters in every experiment. A systematic ablation study establishes necessity: removing either depletion or class-selective structure eliminates the emergent properties. We identify structured, irreversible depletion as a necessary condition for life-like dynamics in interacting systems. We do not claim this condition is sufficient for life.
 
 ---
 
@@ -17,15 +17,15 @@ We present a single conservation law for autonomous agents — `C_{n+1} + S_{n+1
 
 ### 1.1 The Question
 
-What is the minimum you need to add to a system for intelligent-looking behavior to emerge?
+What does it take for a system of interacting agents to produce life-like dynamics — scarcity, niches, stratification, boom/bust cycles — without anyone programming those behaviors?
 
-The standard answers involve computation (neural networks, decision trees), learning (gradient descent, reinforcement), or optimization (utility maximization, evolutionary search). Each adds substantial machinery. Each requires domain-specific tuning. Each produces intelligence that is specific to the domain it was trained on.
+The standard answers involve computation (neural networks, decision trees), learning (gradient descent, reinforcement), or optimization (utility maximization, evolutionary search). Each adds substantial machinery. Each requires domain-specific tuning. Each produces behaviors specific to the domain it was trained on.
 
 We propose a different answer: **a conservation law**.
 
 A conservation law adds one thing to a system: a constraint. Mass cannot be created or destroyed. Energy in equals energy out. Signal plus loss equals the mass consumed. This constraint is domain-agnostic — it doesn't know what the mass represents, what the signal means, or what the loss costs. It simply enforces an invariant.
 
-The claim of this paper is that this constraint alone — applied without modification across domains — is sufficient to produce emergent behaviors that resemble intelligence: resource allocation, market dynamics, ecological balance, and trustless accountability. Not because the law is intelligent, but because the constraint forces the system into states that an observer would call intelligent.
+The claim of this paper is that structured, irreversible depletion — the specific kind of constraint a conservation law provides — is a *necessary condition* for life-like dynamics in interacting systems. We demonstrate this across four unrelated domains, and we establish necessity through ablation: remove the constraint, and the dynamics disappear. We do not claim this condition is sufficient for life. We claim that without it, the dynamics we document cannot arise.
 
 ### 1.2 The Conservation Law
 
@@ -251,22 +251,24 @@ In each domain, the conservation law forces the system into a narrow corridor of
 - **Management without managers (IoT)**: Conservation eliminates the need for resource governors because depletion is automatic. The constraint forces budgeting.
 - **Ecology without ecology (marketplace)**: Conservation eliminates the need for population rules because mass depletion creates carrying capacity. The constraint forces balance.
 
-### 7.3 Emergence, Not Intelligence
+### 7.3 Life-Like Dynamics, Not Intelligence
 
-We do not claim that agents under the conservation law are intelligent. They are payloads. They have no goals, no models, no learning. What we claim is that the *system* exhibits behaviors that an observer would attribute to intelligent design:
+We do not claim that agents under the conservation law are intelligent, nor that the conservation law is sufficient to produce life. The agents are payloads. They have no goals, no models, no learning. What we claim is that the *system* exhibits dynamics that an observer would recognize as life-like:
 
 - Budget-constrained agents "decide" to skip expensive operations
 - Populations "find" equilibrium carrying capacity
 - Resource budgets "adapt" to environmental conditions
 - Trust relationships "emerge" from mass physics
 
-These are not decisions. They are consequences of a constraint narrowing the state space until only "intelligent-looking" trajectories remain. Intelligence is what's left when you've eliminated all the stupid options. A conservation law eliminates them by arithmetic.
+These are not decisions. They are consequences of a constraint making consequence unavoidable. Every interaction costs something. Every cost is irreversible. Every cost is structured by key class. The result is that agents face tradeoffs — and tradeoffs produce dynamics that look like allocation, strategy, and adaptation. Not because anyone is strategizing, but because the constraint has eliminated every trajectory where consequence could be avoided.
 
-### 7.4 The Minimal Sufficient Condition
+### 7.4 A Necessary Condition
 
-We hypothesize that a conservation law is the *minimal sufficient condition* for intelligence-resembling emergence. It is sufficient because it produces the behaviors listed above without any additional machinery. It is minimal because removing it — allowing mass creation, double-spending, or infinite energy — eliminates all emergent properties. Without the constraint, agents can do anything, which means nothing is interesting. Scarcity forces allocation. Allocation forces strategy. Strategy resembles intelligence.
+We identify structured, irreversible depletion as a *necessary condition* for the life-like dynamics documented in this paper. The ablation study (Section 9) establishes this: remove depletion and all four emergent properties vanish; remove class-selective structure and three of four degrade or disappear. Without the constraint, agents can do anything, which means nothing differentiates. Scarcity forces allocation. Structure forces selectivity. Together they produce dynamics that look like life.
 
-This echoes a principle from thermodynamics: the Second Law doesn't make heat engines intelligent. It makes certain configurations of heat engines *inevitable*. The conservation law doesn't make agents intelligent. It makes certain configurations of agent behavior inevitable.
+We do not claim this condition is sufficient. Other factors — finite population, topology, resource regeneration rates — contribute to the specific dynamics observed. What we claim is narrower: without structured, irreversible depletion that makes consequence unavoidable, the dynamics we document cannot arise. This is a necessary condition, not a recipe.
+
+This echoes a principle from thermodynamics: the Second Law doesn't make heat engines alive. It makes certain configurations of heat engines *inevitable* — and without it, none of those configurations can exist. The conservation law doesn't make agents alive. It makes certain configurations of agent behavior inevitable. And without it, those configurations disappear.
 
 ---
 
@@ -394,7 +396,7 @@ The conservation law has two components: **depletion** (mass decreases on intera
 
 **Both factors are necessary.** The conservation law provides both. Remove either and emergence degrades. Remove both and emergence disappears entirely.
 
-This establishes causality: the conservation law is not merely present alongside emergence. It is the mechanism that produces it. The structured, class-selective, accountable depletion governed by `C_{n+1} + S_{n+1} + L_n = C_n` is the minimal sufficient condition for the emergent behaviors documented in this paper.
+This establishes necessity: the conservation law is not merely present alongside emergence. It is required for it. The structured, class-selective, irreversible depletion governed by `C_{n+1} + S_{n+1} + L_n = C_n` is a necessary condition for the life-like dynamics documented in this paper. We do not claim it is sufficient — other factors (topology, population size, regeneration) shape the specific dynamics. But without structured depletion that makes consequence unavoidable, none of these dynamics arise.
 
 ---
 
@@ -484,11 +486,11 @@ We applied this constraint, unmodified, to four unrelated domains:
 
 750 agents. 5,415 interactions. Four domains. Zero parameter tuning. Zero conservation violations.
 
-The ablation study (Section 9) establishes that this is causal, not correlational. Removing depletion eliminates all emergence. Removing class-selective structure degrades stratification and destroys niche differentiation and per-class auditability. Both components — depletion and structure — are necessary. The conservation law provides both.
+The ablation study (Section 9) establishes that this is not correlation. Removing depletion eliminates all emergence. Removing class-selective structure degrades stratification and destroys niche differentiation and per-class auditability. Both components — depletion and structure — are necessary. The conservation law provides both.
 
 The conservation law does not know what domain it is operating in. It does not know that alpha means battery in one experiment and mission payload in another. It does not know about organizations, tool prices, RV campgrounds, or ecological niches. It knows one thing: `C_{n+1} + S_{n+1} + L_n = C_n`. And from that one thing, all of the above emerged.
 
-Intelligence is not what you add to a system. It is what remains when a constraint has eliminated everything that doesn't work.
+We identify a necessary condition for life-like dynamics in interacting systems: structured, irreversible depletion that makes consequence unavoidable. We do not claim this condition is sufficient for life.
 
 **`λ > 0`. The signal continues.**
 
