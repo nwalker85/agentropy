@@ -2,7 +2,7 @@
 
 **Agent Mass Theory Applied to API Gateway Economics**
 
-*Nate Walker — Ravenhelm*
+*Nathan Walker — Ravenhelm*
 *February 2026*
 
 ---

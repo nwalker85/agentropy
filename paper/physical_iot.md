@@ -2,7 +2,7 @@
 
 **Conservation Law as Resource Management for The Viking**
 
-*Nate Walker — Ravenhelm*
+*Nathan Walker — Ravenhelm*
 *February 2026*
 
 ---

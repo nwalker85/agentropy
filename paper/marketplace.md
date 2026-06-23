@@ -2,7 +2,7 @@
 
 **Agent Mass Theory Applied to Resource Competition and Nutrient Cycling**
 
-*Nate Walker — Ravenhelm*
+*Nathan Walker — Ravenhelm*
 *February 2026*
 
 ---

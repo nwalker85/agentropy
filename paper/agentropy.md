@@ -2,7 +2,7 @@
 
 **One Constraint. Four Domains. Zero Violations.**
 
-*Nate Walker — Ravenhelm*
+*Nathan Walker — Ravenhelm*
 *February 2026*
 
 ---
