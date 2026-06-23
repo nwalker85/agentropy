@@ -588,3 +588,40 @@ Therefore: `Σ (signal(l_i) + loss(l_i)) = Σ mass(l_i) = C_before - C_after`
 Therefore: `C_after + S + L = C_before`. QED.
 
 The conservation law is a tautology of symmetric encryption. It holds because subtraction works.
+
+---
+
+## Appendix C: The Broader Framework — Agentropy, λ, and the Four Deaths
+
+This paper isolates one empirical claim: structured, irreversible depletion as a *necessary condition* for life-like dynamics. That claim is the core of a larger framework, **Agentropy**, developed in companion work. We sketch the connections here for context; **none of this paper's empirical claims depend on them.**
+
+**The λ term.** The conservation law's depletion is the same statement as the stigmergic weight update `w_{t+1} = (1−λ)·w_t + α·r`, where `λ ∈ [0,1]` is a forgetting/decay rate and `α·r` is reinforcement. Potential decays (`λ`, loss, cost); signal reinforces (`α·r`, signal, revenue); the system converges or dies. `λ` is the *anti-equilibrium term*: without it, weights accumulate, gradients vanish, and the system dies of certainty. The minimal condition for sustained adaptation is **`λ > 0`** — this paper's closing line.
+
+**Agentropy (the quantity).** We define *agentropy* as the distance between an agent's current state and equilibrium death — its remaining capacity to maintain local order by exporting entropy. In this paper that quantity is cipher mass `C`. The same quantity reappears, renamed, in every substrate: economic capital (`Capital_t − Costs_t + Revenue_t`), remaining gradient magnitude, staked reputation, biological ATP. The conservation law is the ledger; agentropy is the budget it tracks.
+
+**The Four Deaths.** An agent can lose its agentropy four ways: **sudden** (`C → 0` at once), **slow** (sustained `dE/dt < 0`), **social** (agentropy can no longer be exchanged with the field), and **equilibrium** (`ΔL → 0` — the vanishing-gradient death, "indistinguishable from success"). The fourth is why `λ > 0` is required.
+
+**The definition of life.** Remove "digital" from *"an agent is a digital pattern of entropy management persisting autonomously"* and the statement is a substrate-independent definition of life, isomorphic to Schrödinger's 1944 characterization of a living system as one that maintains local order by exporting entropy to its environment [1]. This paper makes only the weaker, testable claim (a *necessary condition* for life-*like* dynamics); the stronger claim is argued in companion work.
+
+**Companion works.** The **Cube Protocol** gives field equations for stigmergic, non-deterministic communication and traversal (entropy is signal, loss is navigation, death is governance). **The Architecture of Life** argues the conservation law, the stigmergic weight update, and economic viability are one equation at three zoom levels. **Artimetrics** supplies the identity *membrane* — a `did:web` identifier plus an immutable birth certificate (static "fingerprint/DNA") and a developing behavioral signature ("handwriting/gait/voice") — that bounds the entity across which `C + S + L = C₀` holds, and federates the same model across software agents and physical devices ("one doctrine, two substrates").
+
+---
+
+## References
+
+1. Schrödinger, E. (1944). *What Is Life? The Physical Aspect of the Living Cell.* Cambridge University Press.
+2. Landauer, R. (1961). Irreversibility and heat generation in the computing process. *IBM Journal of Research and Development*, 5(3), 183–191.
+3. Dworkin, M. (2007). *Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC.* NIST Special Publication 800-38D.
+4. Petri, C. A. (1962). *Kommunikation mit Automaten.* PhD thesis, University of Bonn.
+5. Păun, G. (2000). Computing with membranes. *Journal of Computer and System Sciences*, 61(1), 108–143.
+6. Berry, G., & Boudol, G. (1992). The chemical abstract machine. *Theoretical Computer Science*, 96(1), 217–248.
+7. Gardner, M. (1970). The fantastic combinations of John Conway's new solitaire game "life". *Scientific American*, 223(4), 120–123.
+8. Wolfram, S. (2002). *A New Kind of Science.* Wolfram Media.
+9. Ray, T. S. (1991). An approach to the synthesis of life. In *Artificial Life II* (pp. 371–408). Addison-Wesley.
+10. Ofria, C., & Wilke, C. O. (2004). Avida: A software platform for research in computational evolutionary biology. *Artificial Life*, 10(2), 191–229.
+11. Gause, G. F. (1934). *The Struggle for Existence.* Williams & Wilkins.
+12. Nisan, N., & Ronen, A. (2001). Algorithmic mechanism design. *Games and Economic Behavior*, 35(1–2), 166–196.
+13. Tesfatsion, L. (2006). Agent-based computational economics. In *Handbook of Computational Economics* (Vol. 2, pp. 831–880). Elsevier.
+14. Dorigo, M., & Stützle, T. (2004). *Ant Colony Optimization.* MIT Press.
+15. Kennedy, J., & Eberhart, R. (1995). Particle swarm optimization. *Proceedings of ICNN'95*, 1942–1948.
+16. W3C (2022). *Decentralized Identifiers (DIDs) v1.0.* W3C Recommendation.
