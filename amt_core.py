@@ -31,7 +31,7 @@ Cryptographic Primitives:
     - Each key_class maps to a deterministic symmetric key
     - Layers are independently encrypted — no nesting dependency
 
-Author: Ravenhelm / Nate Walker
+Author: Ravenhelm / Nathan Walker
 Date: 2026-02-08
 """
 

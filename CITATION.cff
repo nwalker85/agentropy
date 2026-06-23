@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software or paper, please cite it using these metadata."
+title: "Agentropy: A Conservation Law as a Necessary Condition for Life-Like Dynamics"
+abstract: >-
+  A single conservation law for autonomous agents (C_{n+1} + S_{n+1} + L_n = C_n),
+  applied unmodified across four unrelated domains — cross-organizational
+  accountability, token economics, physical-IoT resource management, and
+  population ecology — produces life-like dynamics that no participant programmed.
+  Across 750 agents and 5,415 interactions, plus a 50,000-agent scale test, zero
+  conservation violations occur. A systematic ablation study establishes that
+  structured, irreversible depletion is a necessary (not sufficient) condition for
+  life-like dynamics in interacting systems.
+type: software
+authors:
+  - family-names: Walker
+    given-names: Nathan
+    affiliation: Ravenhelm
+license: MIT
+repository-code: "https://github.com/nwalker85/agentropy"
+version: 1.0.0
+date-released: 2026-06-23
+keywords:
+  - conservation law
+  - artificial life
+  - agent-based modeling
+  - multi-agent systems
+  - complexity
+  - emergence
+  - agent mass theory
+  - agentropy

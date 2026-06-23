@@ -2,7 +2,7 @@
 
 **Agent Mass Theory Applied to Multi-Party Agent Traversal**
 
-*Nate Walker — Ravenhelm*
+*Nathan Walker — Ravenhelm*
 *February 2026*
 
 ---

@@ -18,7 +18,7 @@ depletion gates accretion, not interaction. Nutrient cycling creates
 new mass via factory (legitimate mass source).
 
 Dependencies: amt_core.py, amt_extensions.py
-Author: Ravenhelm / Nate Walker
+Author: Ravenhelm / Nathan Walker
 Date: 2026-02-08
 """
 

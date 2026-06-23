@@ -26,7 +26,7 @@ physics, not policy. Behavioral divergence emerges from resource
 depletion, not hand-coded power management rules.
 
 Dependencies: amt_core.py, amt_extensions.py
-Author: Ravenhelm / Nate Walker
+Author: Ravenhelm / Nathan Walker
 Date: 2026-02-08
 """
 
