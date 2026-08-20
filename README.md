@@ -54,7 +54,7 @@ Life-Like Dynamics. https://github.com/nwalker85/agentropy
 
 ## License
 
-Reference implementation (code): **MIT** (see `LICENSE`). Paper text (`paper/`): **CC BY 4.0**.
+Reference implementation (code): **Apache License 2.0** (see `LICENSE`). Paper text (`paper/`): **CC BY 4.0**.
 
 ---
 
