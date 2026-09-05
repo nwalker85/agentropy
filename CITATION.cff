@@ -17,8 +17,8 @@ authors:
     affiliation: Ravenhelm
 license: MIT
 repository-code: "https://github.com/nwalker85/agentropy"
-version: 1.0.0
-date-released: 2026-06-23
+version: 1.0.1
+date-released: 2026-06-23  # v1.0.0 deposit date; update at the v1.0.1 tag/deposit
 keywords:
   - conservation law
   - artificial life

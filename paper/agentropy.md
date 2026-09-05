@@ -9,7 +9,9 @@
 
 ## Abstract
 
-We present a single conservation law for autonomous agents — `C_{n+1} + S_{n+1} + L_n = C_n` — and demonstrate that applying it unmodified across four unrelated domains produces life-like dynamics that no participant programmed, no policy engine configured, and no protocol specified. In cross-organizational accountability, the law produces independent auditability across trust boundaries without any party trusting any other. In token economics, it produces market stratification, budget-dependent behavioral divergence, and inflation-proof currency without any pricing protocol. In physical IoT resource management, it produces dynamic load-shedding and power conservation without any management daemon. In population ecology, it produces carrying capacity, boom/bust cycles, niche differentiation, and competitive exclusion without any ecological rules. Across all four domains — 750 agents, 5,415 interactions — zero conservation violations occur. The law is never modified, extended, or parameterized for any domain. It is the same five characters in every experiment. A systematic ablation study establishes necessity: removing either depletion or class-selective structure eliminates the emergent properties. We identify structured, irreversible depletion as a necessary condition for life-like dynamics in interacting systems. We do not claim this condition is sufficient for life.
+We present a single conservation law for autonomous agents — `C_{n+1} + S_{n+1} + L_n = C_n` — and demonstrate that applying it unmodified across four unrelated domains produces life-like dynamics that no participant programmed, no policy engine configured, and no protocol specified. In cross-organizational accountability, the law lets each organization audit its own consumption independently, without a shared intermediary for the arithmetic (under an honest-executor assumption, §11.1). In token economics, it produces market stratification and budget-dependent behavioral divergence, and a currency that cannot be inflated from inside an agent (it does not, by itself, prevent double-spending across copies — §7.2 erratum). In physical IoT resource management, it provides a unified resource-budget interface with exact byte accounting (the load-shedding gate is implemented but not exercised by the reported experiments). In population ecology, it produces monotonic population decline, niche-differential survival of predefined profiles, and nutrient cycling without any ecological rules. Across all four domains — 750 agents, 5,415 interactions in the v1.0.0 reference runs — zero conservation violations occur. The law is never modified, extended, or parameterized for any domain. It is the same five characters in every experiment. A systematic ablation study is consistent with structured, irreversible depletion being a necessary condition for these dynamics; with its controls repaired in v1.0.1 it establishes less than v1.0.0 claimed (§9). We propose structured, irreversible depletion as a necessary condition for life-like dynamics in interacting systems. We do not claim this condition is sufficient for life.
+
+*This is v1.0.1, a patch release. Wording corrections and code fixes are marked inline and listed in `paper/ERRATA-v1.0.1.md`. The deposited v1.0.0 text is preserved at DOI 10.5281/zenodo.20818597.*
 
 ---
 
@@ -43,7 +45,7 @@ Where:
 
 The law states: **an agent's mass after interaction, plus the signal extracted, plus the loss incurred, equals the mass before interaction.** Nothing is created. Nothing disappears. Every byte is accounted for.
 
-This law is enforced by construction — it is an algebraic consequence of how AES-256-GCM decryption works. The encrypted layer has a known size. Decryption produces plaintext (signal) and reveals overhead (loss). The sum is exact. No party can violate it because no party controls it. It is not a protocol. It is arithmetic.
+This law is enforced by construction — it is an algebraic consequence of how the implementation measures a decrypted layer. The encrypted layer has a known size. Decryption produces plaintext (signal); loss is *defined* as the remainder (Appendix B). The sum is exact. No honest party can violate it because it is arithmetic, not a protocol. What it does not do (v1.0.1 wording): it does not make ciphertext unique or non-copyable, it does not bound *how many* layers an environment consumes, and it does not detect an environment that misreports what it consumed (§11.1).
 
 ### 1.3 The Experiments
 
@@ -51,10 +53,10 @@ We applied this law, unmodified, to four domains:
 
 | Domain | What mass represents | What emerges |
 |--------|---------------------|-------------|
-| Cross-org accountability | Encrypted agent payload | Trustless auditability |
+| Cross-org accountability | Encrypted agent payload | Independent per-org auditability |
 | Token economy | Tool-call currency | Market stratification |
-| Physical IoT | Battery, bandwidth, CPU | Resource conservation |
-| Population ecology | Survival energy | Carrying capacity, speciation |
+| Physical IoT | Battery, bandwidth, CPU | Unified resource accounting |
+| Population ecology | Survival energy | Niche-differential survival, nutrient cycling |
 
 In each domain, we changed what the layers *mean*. We never changed how they *work*. The conservation law is identical in all four experiments. The `interact()` function is shared. The assertion `mass_before == mass_after + signal + loss` is the same line of code.
 
@@ -109,20 +111,22 @@ Three organizations — Aegis Corp (deployer), Bifrost Systems (processor), Verd
 
 ### 3.3 What Emerges
 
-**Independent auditability**: Each organization audits its own local ledger. Conservation holds per-interaction, so each org can verify its own consumption without any other org's data. No shared audit framework. No mutually trusted third party.
+**Independent auditability**: Each organization audits its own local ledger. Conservation holds per-interaction, so each org can verify its own consumption without any other org's data. No shared audit framework. No mutually trusted third party *for the arithmetic* — each executor's honesty about what it consumed is assumed (§11.1), and the reference "public ledger" is an unsigned in-memory list, so this is self-consistency, not non-repudiation (v1.0.1 wording; Walker 2026a §3).
 
-**Non-disclosure**: The public ledger contains Merkle roots of batches — not individual transactions. An observer sees that Bifrost committed 3 transactions in a time window. They cannot determine what signal was extracted, what mass was consumed, or which agent transited.
+**Non-disclosure of contents**: The public ledger contains Merkle roots of batches — not individual transactions. An observer sees that Bifrost committed 3 transactions in a time window. They cannot determine what signal was extracted, what mass was consumed, or which agent transited. (Layer *classes* are plaintext metadata and are visible to any environment; only contents are hidden — v1.0.1 erratum, Walker 2026a §2.)
 
-**Budget-constrained routing**: Agents with insufficient delta layers (validation fuel) cannot reach Verdant Labs for validation. This isn't a policy — it's physics. The agent dies before reaching the validator because it ran out of mass. At scale, 71.5% of agents skip validation entirely. No one decided this. The conservation law decided it.
+**Budget-constrained routing**: Agents with insufficient delta layers (validation fuel) cannot reach Verdant Labs for validation. This isn't a policy — it's physics. The agent dies before reaching the validator because it ran out of mass. At scale, 71.0% of agents skip validation entirely (v1.0.1 deterministic reference run; v1.0.0 reported 71.5% from one process-dependent draw). No one decided this. The conservation law decided it.
 
 ### 3.4 Results
 
-| Metric | Value |
-|--------|-------|
-| Agents | 200 |
-| Interactions | 457 |
-| Conservation violations | 0 |
-| Agents validated | 28.5% |
+| Metric | Value (v1.0.1 reference run) | v1.0.0 |
+|--------|-------|-------|
+| Agents | 200 | 200 |
+| Interactions | 459 | 457 |
+| Conservation violations | 0 | 0 |
+| Agents validated | 29.0% | 28.5% |
+
+*The v1.0.0 integers came from a run whose neighbour order depended on the interpreter's string-hash seed (v1.0.1 erratum, reproducibility). v1.0.1 sorts neighbour iteration; the numbers above are identical under any `PYTHONHASHSEED`.*
 
 ---
 
@@ -138,22 +142,27 @@ Five tool classes (API calls, LLM inference, storage, compute, admin) mapped to 
 
 ### 4.3 What Emerges
 
-**Natural currency**: Layers are atomic (consumed or not — no partial payment), class-specific (each denomination funds different tools), and conservation-governed (cannot be inflated, counterfeited, or double-spent).
+**Natural currency**: Layers are atomic (consumed or not — no partial payment), class-specific (each denomination funds different tools), and conservation-governed (no mass is created outside the factory). *v1.0.1 erratum:* v1.0.0 added "cannot be … double-spent". That is false of the reference implementation — ciphertext is copyable bytes, and a copied agent pays twice (Walker 2026b §8.2). Uniqueness across copies needs an authority outside the scheme.
 
-**Market stratification**: Agents with 12 beta layers can make exactly 4 LLM calls. Agents with 1 beta layer can make zero. No access control list creates this stratification. The agent's mass profile IS its economic identity.
+**Market stratification**: Agents with 12 beta layers can make exactly 4 LLM calls. Agents with 1 beta layer can make zero. *v1.0.1:* true now that the gateway enforces its declared price; in v1.0.0 the gateway drained every layer of its class, so 12 layers bought one call and 1 layer bought a "successful" 3-layer call (Walker 2026b §4.1 erratum). No access control list creates this stratification — a gateway price rule plus the agent's mass profile do.
 
-**Budget-behavior coupling**: Rich agents (>1,000 B) average 3.8 successful tool calls. Poor agents (<=500 B) average 1.8. The ratio (2.1x) emerged from conservation, not policy. Same topology. Same parameters. Different budgets. Different lives.
+**Budget-behavior coupling**: In the v1.0.1 reference run rich agents (>1,000 B) average 10.0 successful tool calls and poor agents (≤500 B) average 1.0, a 9.8× ratio (v1.0.0: 3.8 / 1.8 / 2.1×, under the price-ignoring gateway). The gap widened because refused payments now leave the poor agent's layers unspent and un-useful, while rich agents are no longer drained. Same topology. Same parameters. Different budgets. Different lives.
 
 **Dynamic hazard pricing**: Environments under load don't raise prices per key — they arm themselves with additional keys, stripping more layer types per visit. Fixed unit prices with dynamic aggregate cost, governed by key rotation rather than rate negotiation.
 
 ### 4.4 Results
 
-| Metric | Value |
-|--------|-------|
-| Agents | 200 |
-| Tool calls | 2,113 |
-| Conservation violations | 0 |
-| Rich/poor call ratio | 2.1x |
+| Metric | Value (v1.0.1 reference run) | v1.0.0 |
+|--------|-------|-------|
+| Agents | 200 | 200 |
+| Tool calls (all outcomes) | 2,574 | 2,113 |
+| Successful calls | 468 | 449 |
+| Refused for insufficient funds | 728 | — (not a v1.0.0 outcome) |
+| Agents surviving | 195 (97.5%) | 91 (45.5%) |
+| Conservation violations | 0 | 0 |
+| Rich/poor call ratio | 9.8x | 2.1x |
+
+*v1.0.1 figures are deterministic across processes; v1.0.0's varied with `PYTHONHASHSEED` (reviewer: 2,090–2,206 calls, 100–106 survivors; author: 2,093–2,125 calls, 88–107 survivors). Survival rose because gateways no longer drain agents.*
 
 ---
 
@@ -173,7 +182,7 @@ Each physical resource maps to a key class via a fixed conversion factor (1 Wh =
 
 **Safe passage from key absence**: At an off-grid location (no beta key), bandwidth layers pass through unstripped. This isn't a "bandwidth preservation feature" — it's a consequence of key affinity. The conservation law doesn't know about bandwidth. It simply has no key to decrypt those layers.
 
-**Dynamic load-shedding**: As battery (alpha mass) depletes, mass gates tighten. Heavier agents get blocked. Lighter agents pass. Load-shedding emerges from conservation, not from a load-balancing algorithm. No power management daemon. No priority queue. Just physics.
+**Dynamic load-shedding** (*implemented, not exercised — v1.0.1 erratum*): As battery (alpha mass) depletes, mass gates tighten and heavier agents would be blocked. In the reported experiments this never happens: v1.0.0's scale demo rebuilt the topology per agent so no battery was ever shared (fixed in v1.0.1), and in both versions the tightest gate (512,000 B) is about five times the heaviest agent either experiment can build (≤106,603 B), so the gate cannot bind. The demo now reports the blocked count: 0 of 750 visits. Walker 2026c §3.3.
 
 **Environmental coasting**: An agent that exhausts its alpha and beta layers at the highway "coasts" through mountain (which holds the same keys) — zero layers stripped. The conservation law produces energy-free traversal through environments whose hazard surface the agent has already survived.
 
@@ -200,24 +209,26 @@ When hundreds of agents compete for finite resources, what population dynamics e
 
 ### 6.3 What Emerges
 
-**Carrying capacity**: The population stabilizes at 4-6 agents (2-3% of initial population). Not programmed. Emerges from regeneration rate / consumption rate balance.
+*v1.0.1: the four headings below were "Carrying capacity", "Boom/bust dynamics", "Niche differentiation" and "Nutrient cycling". The model has no reproduction, so the first three name things it cannot exhibit (Walker 2026d §5, §9). The measured properties are:*
 
-**Boom/bust dynamics**: Population crashes when consumption exceeds regeneration. Exponential decay: 100 agents → 76 (step 5) → 44 (step 10) → 18 (step 15) → 0 (step 38). Classic overshoot-and-collapse, produced by conservation law + finite resources.
+**Tail population** (v1.0.0: "Carrying capacity"): a declining cohort settles into a tail of 1–5 agents depending on the run; the implementation's estimate is a mean over the last 30 % of the trace. Not an equilibrium — nothing is born.
 
-**Niche differentiation**: Alpha-heavy agents cluster at Feeding A (4.0% survival). Beta-heavy agents cluster at Feeding B (8.0% survival). Different mass profiles → different habitats → different survival outcomes. Gause's competitive exclusion principle, emergent from mass physics.
+**Monotonic decline** (v1.0.0: "Boom/bust"): 100 agents → 82 (step 4) → 49 (step 8) → 17 (step 16) → 5 (step 28) → 2 alive at 40 steps (v1.0.1 reference run). No boom, no recovery; consumption outpaces the accretion that pools and cycling can fund.
 
-**Nutrient cycling**: 77.3% of dead agent mass is recycled to survivors. The food chain: Agent A dies → signal + loss deposited → nutrient cycler accumulates → factory creates new layers → Agent B accretes. Dead agents fuel living ones. Conservation governs every step.
+**Niche-differential survival** (v1.0.0: "Niche differentiation … Gause's competitive exclusion"): two predefined profiles survive at different rates — alpha-heavy 12.0 %, beta-heavy 4.0 % in the v1.0.1 run; v1.0.0 reported 4.0 % / 8.0 %, and other seeds give 0–8 % — so even the direction is run-dependent. Differential depletion by key class is real; speciation and competitive exclusion are not claimed.
 
-**Resource partitioning**: The Shelter (no keys, safe passage) accounts for 31.6% of all interactions. Agents disproportionately route through safe zones — behavioral resource partitioning without ecological modeling.
+**Nutrient cycling**: 29.3 % of captured nutrient bytes are embodied as new payload for survivors (v1.0.0 reported 77.3 % by counting budget rather than accreted mass). The loop: Agent A depleted → signal + loss deposited → cycler accumulates → factory mints layers → Agent B accretes. The minted layers also carry 2,604 B of fresh overhead the loop did not supply; no system-level equation accounts for it.
+
+**Route concentration**: The Shelter (no keys, safe passage) accounts for 31.6 % of all interactions in both versions' reference runs. Agents disproportionately route through the safe node — a consequence of the mass-dependent routing rule.
 
 ### 6.4 Results
 
-| Metric | Value |
-|--------|-------|
-| Agents | 200 |
-| Interactions | 2,095 |
-| Nutrient recycling rate | 77.3% |
-| Conservation violations | 0 |
+| Metric | Value (v1.0.1 reference run) | v1.0.0 |
+|--------|-------|-------|
+| Agents | 200 | 200 |
+| Interactions | 1,942 | 2,095 |
+| Nutrient recycling rate | 29.3% | 77.3% (budget-counted) |
+| Conservation violations | 0 | 0 |
 
 ---
 
@@ -246,10 +257,10 @@ The law doesn't know which interpretation is active. It enforces `C + S + L = C_
 
 In each domain, the conservation law forces the system into a narrow corridor of possible states. Not all states are reachable. Not all behaviors are possible. The constraint eliminates:
 
-- **Trust without trust (cross-org)**: Conservation eliminates the need for trusted intermediaries because the math self-enforces. The constraint forces auditability.
-- **Markets without markets (token economy)**: Conservation eliminates inflation, double-spending, and unauthorized access because mass is physical. The constraint forces scarcity.
-- **Management without managers (IoT)**: Conservation eliminates the need for resource governors because depletion is automatic. The constraint forces budgeting.
-- **Ecology without ecology (marketplace)**: Conservation eliminates the need for population rules because mass depletion creates carrying capacity. The constraint forces balance.
+- **Audit without a shared auditor (cross-org)**: Conservation removes the need for a trusted intermediary *for the arithmetic* because each party can recompute it. It does not remove the need to trust each executor's report (§11.1). The constraint forces per-party auditability.
+- **Scarcity inside the agent (token economy)**: Conservation eliminates mass creation outside the factory. *v1.0.1 erratum:* v1.0.0 said it "eliminates inflation, double-spending, and unauthorized access because mass is physical". Mass is bytes; bytes copy. Double-spending across copies is not eliminated (Walker 2026b §8.2), and "unauthorized access" is a policy notion the law does not address. The constraint forces scarcity within an honest process.
+- **Budgeting without a governor (IoT)**: Conservation eliminates the need for a separate resource governor because depletion is automatic. The constraint forces budgeting — of the simulated budget; physical coupling is future work.
+- **Decline without a death rule (marketplace)**: Conservation eliminates the need for explicit death rules because depletion ends agents. *v1.0.1 wording:* it does not by itself create carrying capacity — with no births the population can only decline, and the reported "carrying capacity" is a tail average of that decline (Walker 2026d §5).
 
 ### 7.3 Life-Like Dynamics, Not Intelligence
 
@@ -264,7 +275,7 @@ These are not decisions. They are consequences of a constraint making consequenc
 
 ### 7.4 A Necessary Condition
 
-We identify structured, irreversible depletion as a *necessary condition* for the life-like dynamics documented in this paper. The ablation study (Section 9) establishes this: remove depletion and all four emergent properties vanish; remove class-selective structure and three of four degrade or disappear. Without the constraint, agents can do anything, which means nothing differentiates. Scarcity forces allocation. Structure forces selectivity. Together they produce dynamics that look like life.
+We propose structured, irreversible depletion as a *necessary condition* for the life-like dynamics documented in this paper. The ablation study (Section 9) is consistent with the depletion half: remove depletion and all four measured properties vanish — although the immortal condition returns zero signal by construction, so part of that result is defined into the treatment. The structure half is weaker than v1.0.0 stated (*v1.0.1 erratum*): with the random condition's signal accounting corrected and its depletion rate matched to the control, class-blind stripping preserves stratification (2.9–3.1× vs 3.0×) and, for pure-class agents, preserves niche differentiation; what class-selective structure is demonstrably necessary for is per-class attribution (audit). Scarcity forces allocation. Structure forces attribution. Whether structure is necessary for the other dynamics is open.
 
 We do not claim this condition is sufficient. Other factors — finite population, topology, resource regeneration rates — contribute to the specific dynamics observed. What we claim is narrower: without structured, irreversible depletion that makes consequence unavoidable, the dynamics we document cannot arise. This is a necessary condition, not a recipe.
 
@@ -276,15 +287,17 @@ This echoes a principle from thermodynamics: the Second Law doesn't make heat en
 
 ### 8.1 Cross-Domain Summary
 
-| Domain | Agents | Interactions | Violations | Key Emergent Property |
-|--------|--------|-------------|------------|----------------------|
-| Cross-org | 200 | 457 | 0 | Trustless auditability |
-| Token economy | 200 | 2,113 | 0 | Market stratification |
-| Physical IoT | 150 | 750 | 0 | Unified resource management |
-| Ecology | 200 | 2,095 | 0 | Carrying capacity + speciation |
-| **Total** | **750** | **5,415** | **0** | |
+| Domain | Agents | Interactions (v1.0.1 ref. run) | v1.0.0 | Violations | Key Emergent Property |
+|--------|--------|-------------|--------|------------|----------------------|
+| Cross-org | 200 | 459 | 457 | 0 | Independent per-org auditability |
+| Token economy | 200 | 2,574 | 2,113 | 0 | Market stratification |
+| Physical IoT | 150 | 750 | 750 | 0 | Unified resource accounting |
+| Ecology | 200 | see Walker 2026d §6 | 2,095 | 0 | Niche-differential survival, nutrient cycling |
+| **Total** | **750** | | **5,415** | **0** | |
 
-Additionally, the core scale test (not domain-specific) verified conservation across 50,000 agents and 2.3 million interactions with zero violations.
+Additionally, the core scale test (not domain-specific) verified conservation across 50,000 agents and about 2.29 million node visits with zero violations (author 2,285,529 visits, 334 s; reviewer 2,286,167 visits, 281 s — the difference is the hash-seed ordering fixed in v1.0.1).
+
+*v1.0.1 note on the integers:* the v1.0.0 column is one draw from a process-dependent distribution (the neighbour-order bug, §"Reproducibility" in the errata). The v1.0.1 column is deterministic. Neither column is a mean with an interval; a multi-seed runner is deferred.
 
 ### 8.2 The Number That Matters
 
@@ -294,9 +307,9 @@ Zero conservation violations across 750 agents, 5,415 interactions, four domains
 
 ### 8.3 What Zero Means
 
-In protocol-based systems, the violation rate is the error rate — bugs in the billing service, race conditions in the rate limiter, edge cases in the access control logic. These systems aspire to low violation rates. AMT's violation rate is not low. It is structurally zero. A violation would require AES-256-GCM decryption to produce bytes from nowhere — a cryptographic impossibility.
+In protocol-based systems, the violation rate is the error rate — bugs in the billing service, race conditions in the rate limiter, edge cases in the access control logic. These systems aspire to low violation rates. AMT's violation rate is not low. It is structurally zero — because `loss` is defined as `mass − signal` (Appendix B), so the identity cannot fail in a correct implementation. *v1.0.1 wording:* zero violations across any number of trials therefore confirms that the implementation accounts for every byte it removes; it does not independently validate a natural law, and the count of trials cannot make a definitional identity more confirmed (Overmier 2026). The v1.0.0 sentence "a violation would require AES-256-GCM decryption to produce bytes from nowhere" was the wrong reason; the right one is that the equation is an accounting identity.
 
-This is the difference between a protocol and a law. A protocol says "don't create mass." A law says "mass cannot be created." The first can be violated. The second cannot.
+This is the difference between a protocol and an identity. A protocol says "don't create mass." An identity says "mass removed is, by definition, signal plus loss." The first can be violated. The second cannot — and, for that reason, it also cannot by itself prevent copying, overcharging, or misreporting.
 
 ---
 
@@ -316,6 +329,10 @@ To answer this, we perform a systematic ablation: remove or degrade the conserva
 
 **RANDOM** (remove structure): The environment consumes layers but ignores key class affinity. A random subset of layers is removed regardless of which key class they belong to. Mass is consumed (depletion exists) but the structure of consumption — which key classes are stripped, in what proportion — is destroyed. Total mass accounting is valid but per-class attribution is impossible.
 
+*v1.0.1 correction to the RANDOM condition.* In v1.0.0 this condition (a) removed about one layer per environment key class, while CONTROL removes every affinity layer — so depletion *rate* was not held constant — and (b) reported `signal = consumed // 2`, an invented split (Overmier 2026, items 20–21). v1.0.1 keeps RANDOM for comparability but derives signal and loss from the real layer geometry (`mass − 28`, zero for empty layers), and adds:
+
+**RANDOM-MATCHED** (remove structure, hold rate): removes exactly as many layers as CONTROL would have decrypted on that visit, chosen at random regardless of class. For a *pure-class* agent this is identical to CONTROL by construction — "random layers of one class" is the same set as "all layers of that class" — so Experiment 3 cannot separate structure from depletion with the pure-class fixture it uses.
+
 ### 9.3 Four Measurements
 
 We test whether each emergent property survives each ablation condition:
@@ -332,13 +349,16 @@ We test whether each emergent property survives each ablation condition:
 
 **Experiment 1: Scarcity**
 
+*Tables below are the v1.0.1 run (`python3 amt_ablation_demo.py`, seed 42, deterministic). Where a v1.0.0 cell differed it is given in brackets.*
+
 | Condition | Death Rate | Survivors | Interactions | Violations |
 |-----------|-----------|-----------|-------------|-----------|
 | CONTROL | 100% | 0 | 561 | 0 |
 | IMMORTAL | 0% | 100 | 2,000 | 0 |
 | RANDOM | 100% | 0 | 1,300 | 0 |
+| RANDOM-MATCHED | 100% | 0 | 840 | 0 |
 
-Depletion creates finite lifespans. Without it (IMMORTAL), agents live forever. Both CONTROL and RANDOM produce death — depletion alone is sufficient for scarcity.
+Depletion creates finite lifespans. Without it (IMMORTAL), agents live forever. CONTROL and both RANDOM variants produce death — depletion alone is sufficient for scarcity.
 
 **Experiment 2: Stratification**
 
@@ -346,9 +366,10 @@ Depletion creates finite lifespans. Without it (IMMORTAL), agents live forever. 
 |-----------|-----------|-----------|-------|-------------|
 | CONTROL | 768 B | 256 B | 3.00x | 50 / 50 |
 | IMMORTAL | 0 B | 0 B | 1.00x | 0 / 0 |
-| RANDOM | 138 B | 73 B | 1.90x | 0 / 0 |
+| RANDOM | 192 B [138 B] | 61 B [73 B] | 3.12x [1.90x] | 0 / 0 |
+| RANDOM-MATCHED | 558 B | 195 B | 2.87x | 0 / 0 |
 
-Under conservation (CONTROL), rich agents extract exactly 3x the signal of poor agents — matching the 3:1 key-class breadth ratio. Under random stripping (RANDOM), the ratio degrades to 1.9x: some stratification persists (because rich agents still have more total mass to lose) but the precision of class-selective economics is destroyed. Under IMMORTAL, zero signal is extracted from either tier.
+Under CONTROL, rich agents extract 3× the signal of poor agents. That ratio is set by the fixture: rich agents carry data in three classes and poor agents carry data in one class plus empty padding in the other two, so a 3:1 outcome is the expected consequence of the input construction (Overmier 2026, item 23). *v1.0.1 correction:* v1.0.0 reported that RANDOM "degrades" the ratio to 1.9×; that number came from the invented 50/50 signal split. With signal measured from the real layer geometry, class-blind stripping preserves the ratio (3.1× unmatched, 2.9× rate-matched). **Stratification does not depend on class-selective structure**; it depends on rich agents carrying more data. Under IMMORTAL, zero signal is returned by construction.
 
 **Experiment 3: Selectivity (Niche Differentiation)**
 
@@ -357,12 +378,9 @@ Under conservation (CONTROL), rich agents extract exactly 3x the signal of poor 
 | CONTROL | 0% | 100% | 100% | 0% | **1.00** |
 | IMMORTAL | 100% | 100% | 100% | 100% | 0.00 |
 | RANDOM | 100% | 100% | 100% | 100% | 0.00 |
+| RANDOM-MATCHED | 0% | 100% | 100% | 0% | **1.00** |
 
-Under conservation (CONTROL), niche differentiation is **perfect**: alpha-pure agents die in alpha environments and survive in beta environments, and vice versa. This is because the conservation law's key-class selectivity ensures that only matching layers are stripped.
-
-Under IMMORTAL, nobody dies anywhere — no niche to differentiate.
-
-Under RANDOM, agents survive all environments equally because random stripping removes so few layers per interaction (matching the environment's single-key hazard rate) that agents outlast the experiment in all habitats. The class-selective mechanism that creates niches is eliminated.
+Under CONTROL, niche differentiation is perfect: alpha-pure agents die in alpha environments and survive in beta environments, and vice versa. Under IMMORTAL, nobody dies anywhere. Under RANDOM (unmatched), agents survive everywhere because the condition strips one layer per visit and the experiment is three visits long — a *rate* effect, not a structure effect. Under RANDOM-MATCHED the score is 1.00, identical to CONTROL, because for a pure-class agent "random layers" and "all affinity layers" are the same set. *v1.0.1 conclusion:* this fixture cannot attribute niche differentiation to class-selective structure; a mixed-class fixture would be needed.
 
 **Experiment 4: Accountability**
 
@@ -371,32 +389,30 @@ Under RANDOM, agents survive all environments equally because random stripping r
 | CONTROL | 100% | 41,000 B | 100% | 100% |
 | IMMORTAL | 100% | 0 B | 0% | 0% |
 | RANDOM | 100% | 11,240 B | 100% | 0% |
+| RANDOM-MATCHED | 100% | 28,204 B | 93% | 0% |
 
-Conservation is technically valid in all three conditions (mass accounting is correct). But:
-- CONTROL: meaningful consumption with per-class delta_L vectors — each organization can audit which key classes were consumed on its infrastructure.
-- IMMORTAL: conservation is vacuous — nothing was consumed, nothing to audit.
-- RANDOM: mass was consumed but the per-class delta_L vector is empty — total mass accounting works but no organization can determine which resource classes were consumed.
+Conservation is valid in all conditions (mass accounting is correct). Only CONTROL populates the per-class `delta_L` vector — the property that lets an organization say *which* resource classes were consumed on its infrastructure. This is the one result that survives the repaired controls unchanged, and it is close to definitional: class-blind stripping cannot produce class attribution.
 
 ### 9.5 Summary
 
-| Emergent Property | CONTROL | IMMORTAL | RANDOM |
-|------------------|---------|----------|--------|
-| Finite lifespans | YES | NO | YES |
-| Budget stratification | YES (3.0x) | NO | Degraded (1.9x) |
-| Niche differentiation | YES (1.00) | NO | NO |
-| Per-class audit | YES | NO (vacuous) | NO (no per-class) |
+| Emergent Property | CONTROL | IMMORTAL | RANDOM | RANDOM-MATCHED |
+|------------------|---------|----------|--------|--------|
+| Finite lifespans | YES | NO | YES | YES |
+| Budget stratification | YES (3.0x) | NO (zero output) | YES (3.1x) [v1.0.0: Degraded 1.9x] | YES (2.9x) |
+| Niche differentiation | YES (1.00) | NO | NO (rate artifact) | YES (1.00) |
+| Per-class audit | YES | NO (vacuous) | Total only | Total only |
 
-### 9.6 Interpretation
+### 9.6 Interpretation (*rewritten in v1.0.1*)
 
-The conservation law has two components: **depletion** (mass decreases on interaction) and **structure** (depletion is class-selective and accountable via delta_L). The ablation isolates their contributions:
+The conservation law has two components: **depletion** (mass decreases on interaction) and **structure** (depletion is class-selective and accountable via delta_L). The ablation, with its controls repaired, separates them less cleanly than v1.0.0 stated:
 
-- **Remove depletion** (IMMORTAL): All four emergent properties vanish. No scarcity, no stratification, no niches, nothing to audit. Depletion is necessary for any emergence.
+- **Remove depletion** (IMMORTAL): All four measured properties vanish. This is the strongest result, with one caveat the reviewer identified: the immortal condition returns zero signal *by construction*, so "no economic output" is partly defined into the treatment rather than observed.
 
-- **Remove structure** (RANDOM): Scarcity survives (agents still die) but class-selective properties — niche differentiation and per-class audit — are destroyed. Stratification degrades from 3.0x to 1.9x because the precision of class-selective economics is replaced by crude mass-proportional effects.
+- **Remove structure, hold rate** (RANDOM-MATCHED): Scarcity survives. Stratification survives (2.9×). Niche differentiation survives for the pure-class fixture used. Per-class audit does not survive — and cannot, by definition.
 
-**Both factors are necessary.** The conservation law provides both. Remove either and emergence degrades. Remove both and emergence disappears entirely.
+- **Remove structure without holding rate** (RANDOM, the v1.0.0 condition): niche differentiation "vanishes" because agents are under-depleted, not because structure is gone; the stratification "degradation" was an accounting artifact.
 
-This establishes necessity: the conservation law is not merely present alongside emergence. It is required for it. The structured, class-selective, irreversible depletion governed by `C_{n+1} + S_{n+1} + L_n = C_n` is a necessary condition for the life-like dynamics documented in this paper. We do not claim it is sufficient — other factors (topology, population size, regeneration) shape the specific dynamics. But without structured depletion that makes consequence unavoidable, none of these dynamics arise.
+What the study supports: **depletion is necessary for every dynamic measured here, and class-selective structure is necessary for per-class attribution.** What it does not establish, and v1.0.0 claimed: that structure is necessary for stratification or niche differentiation, or that "both factors are necessary" for emergence in general. The hypothesis of §7.4 — structured, irreversible depletion as a necessary condition for life-like dynamics — stands as a hypothesis these fixtures are *consistent with*, not one they establish. Repairing the fixtures (mixed-class agents in Experiment 3, an immortal condition that still yields signal, many seeds with intervals) is the v2 work that could.
 
 ---
 
@@ -404,11 +420,11 @@ This establishes necessity: the conservation law is not merely present alongside
 
 ### 10.1 Conservation Laws in Other Computational Frameworks
 
-**Petri nets** use token conservation to model concurrent systems. Tokens are produced and consumed by transitions, and place invariants enforce conservation across the net. AMT shares the token-conservation property but adds cryptographic enforcement — AMT tokens (layers) cannot be duplicated because they are AES-256-GCM ciphertexts, whereas Petri net tokens are abstract and can be trivially copied in implementation.
+**Petri nets** use token conservation to model concurrent systems. Tokens are produced and consumed by transitions, and place invariants enforce conservation across the net. AMT shares the token-conservation property and adds a cryptographic *content* boundary — a layer's payload is readable only by an environment holding the class secret. *v1.0.1 erratum:* v1.0.0 said here that AMT layers "cannot be duplicated because they are AES-256-GCM ciphertexts". Ciphertexts are bytes and copy exactly like Petri-net tokens; AES-GCM provides confidentiality and integrity, not uniqueness (Walker 2026b §8.2).
 
 **Membrane computing (P systems)** models computation through objects passing between membrane-bounded regions. Objects are consumed and produced by rules, with conservation enforced by rule semantics. AMT's key class affinity is analogous to membrane selectivity — only certain objects (layers of matching class) can pass through certain membranes (be decrypted by environments holding matching keys).
 
-**Chemical Abstract Machine (CHAM)** models concurrent computation as chemical reactions, with molecules (terms) reacting according to rules. Conservation of molecules is a design principle. AMT's conservation is stronger: it is enforced by cryptography rather than by programming convention.
+**Chemical Abstract Machine (CHAM)** models concurrent computation as chemical reactions, with molecules (terms) reacting according to rules. Conservation of molecules is a design principle. AMT's conservation is an accounting identity enforced by an assertion in one function, with the payload boundary enforced by cryptography (v1.0.1 wording; v1.0.0 said "stronger … enforced by cryptography rather than by programming convention").
 
 ### 10.2 Emergent Intelligence in Constrained Systems
 
@@ -416,7 +432,7 @@ This establishes necessity: the conservation law is not merely present alongside
 
 **Swarm intelligence** (ant colony optimization, particle swarm) produces intelligent-looking collective behavior from simple individual rules. AMT agents are simpler than swarm particles — they have no individual rules at all. They are acted upon. The intelligence emerges from the constraint, not from agent computation.
 
-**Artificial Life** (Tierra, Avida) simulates evolution in digital environments using conservation of computational resources (CPU cycles, memory). AMT provides formal conservation guarantees (cryptographic enforcement) that these systems lack.
+**Artificial Life** (Tierra, Avida) simulates evolution in digital environments using conservation of computational resources (CPU cycles, memory). AMT's per-interaction accounting identity is explicit and asserted where theirs is implicit in the runtime; unlike them, v1.0.x has no reproduction and therefore no evolution (§11.3, §12.1).
 
 ### 10.3 Multi-Agent Economics
 
@@ -431,6 +447,8 @@ This establishes necessity: the conservation law is not merely present alongside
 ### 11.1 The Honest Environment Assumption
 
 The conservation law is enforced inside the `interact()` function. A malicious environment that reimplements this function can report false signal/loss values. The law governs correct implementations; it does not detect incorrect ones. Mitigation via hardware attestation (TPM/SGX) or zero-knowledge proofs of correct execution is future work.
+
+*v1.0.1 addition — the threat model, stated.* Who can do what to the v1.0.x reference implementation: **anyone holding an agent's bytes can copy it** and present each copy (Walker 2026b §8.2); **any environment can see every layer's class** and count (Walker 2026a §2); **the operator of a node controls its local ledger, its commitments, and the "public" ledger they are appended to**, none of which is signed or anchored outside the operator (Walker 2026a §3); **the factory holds every class secret** and is the only mass source; **a gateway** enforces its price only because v1.0.1 code makes it (Walker 2026b §4.1). Everything the papers claim holds under the assumption that executors are honest and agents are not copied. That assumption was stated in v1.0.0 (here and in Walker 2026a §9) but several sentences elsewhere claimed more; they are corrected in this release.
 
 ### 11.2 Static Interpretation
 
@@ -476,21 +494,21 @@ We added one constraint to a system of autonomous agents: a conservation law tha
 
 We applied this constraint, unmodified, to four unrelated domains:
 
-1. **Cross-organizational accountability**: The constraint forced trustless auditability. Each organization could verify its own consumption without trusting any other party, because the math self-enforced at every interaction.
+1. **Cross-organizational accountability**: The constraint gave each organization independent auditability of its own consumption, with no shared intermediary for the arithmetic — under an honest-executor assumption, and with a reference ledger that demonstrates self-consistency rather than non-repudiation (*v1.0.1 wording*).
 
-2. **Token economics**: The constraint forced market dynamics. Budget stratification, behavioral divergence, and inflation-proof currency emerged from layer composition alone — no pricing protocol, no credit system, no rate limiter.
+2. **Token economics**: The constraint plus a gateway price rule produced budget stratification and behavioral divergence — no credit system, no rate limiter. The currency cannot be inflated from inside an agent; it can be copied, and the reference implementation does not prevent a copy from paying (*v1.0.1 wording*).
 
-3. **Physical IoT**: The constraint forced resource conservation. Battery management, bandwidth metering, and CPU budgeting became the same operation — layer stripping of different key classes — with load-shedding emerging from mass gate depletion.
+3. **Physical IoT**: The constraint unified battery, bandwidth, storage, CPU and sensor budgets into one accounting operation — layer stripping of different key classes. The load-shedding gate is implemented and not exercised by the reported experiments; the physical coupling is future work (*v1.0.1 wording*).
 
-4. **Population ecology**: The constraint forced ecological balance. Carrying capacity, boom/bust cycles, niche differentiation, and nutrient cycling emerged from 200 agents competing for finite resources — no birth rules, no death rules, no population caps.
+4. **Population ecology**: The constraint plus finite regenerating pools and a nutrient cycler produced monotonic population decline, niche-differential survival of two predefined profiles, and recycling of dead agents' mass — no birth rules, no death rules, no population caps. Without births there is no carrying capacity, boom, or speciation to observe (*v1.0.1 wording*; Walker 2026d).
 
-750 agents. 5,415 interactions. Four domains. Zero parameter tuning. Zero conservation violations.
+750 agents. 5,415 interactions in the v1.0.0 reference runs. Four domains. Zero parameter tuning. Zero conservation violations.
 
-The ablation study (Section 9) establishes that this is not correlation. Removing depletion eliminates all emergence. Removing class-selective structure degrades stratification and destroys niche differentiation and per-class auditability. Both components — depletion and structure — are necessary. The conservation law provides both.
+The ablation study (Section 9), with its controls repaired in v1.0.1, supports that depletion is necessary for every dynamic measured and that class-selective structure is necessary for per-class attribution. It does not establish that structure is necessary for stratification or niche differentiation; the v1.0.0 claim that "both components are necessary" for emergence in general is withdrawn to the status of a hypothesis.
 
 The conservation law does not know what domain it is operating in. It does not know that alpha means battery in one experiment and mission payload in another. It does not know about organizations, tool prices, RV campgrounds, or ecological niches. It knows one thing: `C_{n+1} + S_{n+1} + L_n = C_n`. And from that one thing, all of the above emerged.
 
-We identify a necessary condition for life-like dynamics in interacting systems: structured, irreversible depletion that makes consequence unavoidable. We do not claim this condition is sufficient for life.
+We propose a necessary condition for life-like dynamics in interacting systems: structured, irreversible depletion that makes consequence unavoidable. The evidence here is consistent with it and does not establish it. We do not claim this condition is sufficient for life.
 
 **`λ > 0`. The signal continues.**
 
