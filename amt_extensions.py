@@ -837,9 +837,17 @@ class Topology:
             self.edges.setdefault(to_id, set()).add(from_id)
     
     def reachable_from(self, node_id: str) -> list[Node]:
-        """Get nodes reachable from a given node."""
+        """
+        Get nodes reachable from a given node, in a deterministic order.
+
+        v1.0.1: neighbours are returned sorted by node id. `self.edges` holds
+        `set[str]`, whose iteration order depends on the process's string hash
+        seed (PYTHONHASHSEED). `AgentBehavior.choose_node` draws over the
+        candidate list in order, so an unsorted iteration made every seeded
+        run differ between processes (Overmier review, reproducibility §).
+        """
         neighbor_ids = self.edges.get(node_id, set())
-        return [self.nodes[nid] for nid in neighbor_ids if nid in self.nodes]
+        return [self.nodes[nid] for nid in sorted(neighbor_ids) if nid in self.nodes]
     
     def commit_all(self):
         """Flush all local ledgers to public ledger."""
