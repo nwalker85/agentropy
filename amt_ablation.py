@@ -31,7 +31,7 @@ from amt_core import (
     Agent, Layer, Environment, AgentFactory,
     InteractionResult, DecryptionResult,
     interact as interact_control,
-    derive_key, decrypt_layer,
+    derive_key, decrypt_layer, LAYER_OVERHEAD,
 )
 
 
@@ -76,16 +76,63 @@ def interact_immortal(agent: Agent, env: Environment) -> InteractionResult:
     )
 
 
+def _strip_random_layers(agent: Agent, n_to_remove: int, mass_before: int) -> InteractionResult:
+    """
+    Shared tail of the two RANDOM conditions: remove `n_to_remove` layers chosen
+    uniformly at random, ignoring key class, and account for them honestly.
+
+    Signal and loss are derived from the real layer geometry, exactly as the
+    control's interact() would measure them after decryption:
+        mass = LAYER_OVERHEAD + len(plaintext)
+        signal = len(plaintext) = mass - LAYER_OVERHEAD   (0 for an empty layer)
+        loss   = mass - signal
+    v1.0.0 invented a 50/50 signal/loss split here (Overmier review, ablation §).
+    Per-class attribution (delta_L) stays empty by design: that is the structure
+    the condition removes.
+    """
+    n_to_remove = max(0, min(n_to_remove, len(agent.layers)))
+
+    indices = list(range(len(agent.layers)))
+    random.shuffle(indices)
+    remove_indices = set(indices[:n_to_remove])
+
+    removed = [agent.layers[i] for i in remove_indices]
+    agent.layers = [l for i, l in enumerate(agent.layers) if i not in remove_indices]
+
+    mass_after = agent.mass
+    consumed = mass_before - mass_after
+    signal = sum(max(0, layer.mass - LAYER_OVERHEAD) for layer in removed)
+    loss = consumed - signal
+
+    return InteractionResult(
+        agent_survived=agent.alive,
+        agent_could_enter=True,
+        mass_before=mass_before,
+        mass_after=mass_after,
+        total_signal=signal,
+        total_loss=loss,
+        total_consumed=consumed,
+        layers_stripped=n_to_remove,
+        per_layer=[],
+        delta_L={},  # No per-class tracking — structure destroyed
+    )
+
+
 def interact_random(agent: Agent, env: Environment) -> InteractionResult:
     """
-    Ablation B: Random layers consumed regardless of key class.
+    Ablation B (v1.0.0 condition, kept for comparability): random layers
+    consumed regardless of key class, ~1 layer per environment key class.
 
-    The environment removes a random subset of layers, ignoring
-    key class affinity entirely. Mass is consumed (depletion exists)
-    but the structure of consumption is destroyed.
+    The environment removes a random subset of layers, ignoring key class
+    affinity entirely. Mass is consumed (depletion exists) but the structure
+    of consumption is destroyed.
 
-    Key class selectivity is eliminated — an alpha environment
-    strips beta and gamma layers with equal probability.
+    KNOWN CONFOUND (Overmier review): the CONTROL condition removes *every*
+    affinity layer per visit, while this condition removes only
+    `env.hazard_classes` layers, so depletion rate is not held constant. It
+    is retained so the v1.0.0 tables remain reproducible; the rate-matched
+    variant is `interact_random_matched`. The 50/50 signal/loss split of
+    v1.0.0 is replaced by the real layer geometry in both variants.
     """
     mass_before = agent.mass
 
@@ -108,38 +155,50 @@ def interact_random(agent: Agent, env: Environment) -> InteractionResult:
             layers_stripped=0, per_layer=[], delta_L={},
         )
 
-    # Remove random layers (ignoring key class)
-    # Match control's stripping rate: ~1 layer per env key class
+    # Remove random layers (ignoring key class), ~1 layer per env key class
     n_to_remove = max(1, min(env.hazard_classes, len(agent.layers)))
-    n_to_remove = min(n_to_remove, len(agent.layers))
+    return _strip_random_layers(agent, n_to_remove, mass_before)
 
-    indices = list(range(len(agent.layers)))
-    random.shuffle(indices)
-    remove_indices = set(indices[:n_to_remove])
 
-    removed = [agent.layers[i] for i in remove_indices]
-    agent.layers = [l for i, l in enumerate(agent.layers) if i not in remove_indices]
+def interact_random_matched(agent: Agent, env: Environment) -> InteractionResult:
+    """
+    Ablation B' (v1.0.1): random layers consumed, depletion rate MATCHED to control.
 
-    mass_after = agent.mass
-    consumed = mass_before - mass_after
+    Removes exactly as many layers as the CONTROL condition would have decrypted
+    on this visit (the number of layers whose key class the environment holds),
+    but chooses *which* layers at random regardless of class. This holds the
+    amount of depletion constant and ablates only its structure — the control
+    the review asked for ("match depletion rates across conditions").
 
-    # Signal/loss accounting holds (consumed mass is real)
-    # but per-class attribution is meaningless
-    signal = consumed // 2
-    loss = consumed - signal
+    Consequence worth stating: for a *pure-class* agent (every layer the same
+    class) this condition is indistinguishable from CONTROL, because "random
+    layers of one class" is the same set as "all layers of that class". The
+    selectivity experiment therefore cannot separate structure from depletion
+    with pure agents; see the v1.0.1 errata.
+    """
+    mass_before = agent.mass
 
-    return InteractionResult(
-        agent_survived=agent.alive,
-        agent_could_enter=True,
-        mass_before=mass_before,
-        mass_after=mass_after,
-        total_signal=signal,
-        total_loss=loss,
-        total_consumed=consumed,
-        layers_stripped=n_to_remove,
-        per_layer=[],
-        delta_L={},  # No per-class tracking — structure destroyed
-    )
+    if not env.can_enter(agent):
+        return InteractionResult(
+            agent_survived=agent.alive,
+            agent_could_enter=False,
+            mass_before=mass_before,
+            mass_after=mass_before,
+            total_signal=0, total_loss=0, total_consumed=0,
+            layers_stripped=0, per_layer=[], delta_L={},
+        )
+
+    if not agent.layers:
+        return InteractionResult(
+            agent_survived=False,
+            agent_could_enter=True,
+            mass_before=0, mass_after=0,
+            total_signal=0, total_loss=0, total_consumed=0,
+            layers_stripped=0, per_layer=[], delta_L={},
+        )
+
+    n_to_remove = sum(1 for layer in agent.layers if layer.key_class in env.key_classes)
+    return _strip_random_layers(agent, n_to_remove, mass_before)
 
 
 # =============================================================================
@@ -509,6 +568,7 @@ def run_full_ablation(seed: int = 42) -> list[AblationResult]:
         ("CONTROL", interact_control),
         ("IMMORTAL", interact_immortal),
         ("RANDOM", interact_random),
+        ("RANDOM-MATCHED", interact_random_matched),
     ]
 
     results = []
@@ -606,31 +666,21 @@ def format_comparison(results: list[AblationResult]) -> str:
     lines.append("=" * 80)
     lines.append("")
 
-    c, i, r = results[0], results[1], results[2]
-
-    lines.append(f"  {'Property':<32} {'CONTROL':>14} {'IMMORTAL':>14} {'RANDOM':>14}")
-    lines.append(f"  {'─' * 32} {'─' * 14} {'─' * 14} {'─' * 14}")
+    col = 16
+    header = f"  {'Property':<28}" + "".join(f"{r.condition:>{col}}" for r in results)
+    lines.append(header)
+    lines.append(f"  {'─' * 28}" + "".join(f" {'─' * (col - 1)}" for _ in results))
 
     # Scarcity
     def scarcity_label(res):
         return "YES" if res.scarcity['death_rate'] > 0.01 else "NO"
 
-    lines.append(
-        f"  {'Finite lifespans':<32} {scarcity_label(c):>14} "
-        f"{scarcity_label(i):>14} {scarcity_label(r):>14}"
-    )
-
     # Stratification
     def strat_label(res):
         ratio = res.stratification['rich_poor_ratio']
         if ratio == float('inf') or (ratio == 1.0 and res.stratification['rich_avg_signal'] == 0):
-            return "NO (zero output)"
-        return f"YES ({ratio:.1f}x)" if ratio > 1.3 else "NO"
-
-    lines.append(
-        f"  {'Budget stratification':<32} {strat_label(c):>14} "
-        f"{strat_label(i):>14} {strat_label(r):>14}"
-    )
+            return "NO (zero out)"
+        return f"YES ({ratio:.1f}x)" if ratio > 1.3 else f"NO ({ratio:.1f}x)"
 
     # Selectivity
     def select_label(res):
@@ -642,11 +692,6 @@ def format_comparison(results: list[AblationResult]) -> str:
         else:
             return "NO"
 
-    lines.append(
-        f"  {'Niche differentiation':<32} {select_label(c):>14} "
-        f"{select_label(i):>14} {select_label(r):>14}"
-    )
-
     # Accountability
     def audit_label(res):
         s = res.accountability
@@ -654,31 +699,37 @@ def format_comparison(results: list[AblationResult]) -> str:
             return "NO (vacuous)"
         if s['per_class_audit_rate'] > 0.5:
             return "YES"
-        return "PARTIAL"
+        return "TOTAL ONLY"  # total accounting valid, no per-class attribution
 
-    lines.append(
-        f"  {'Per-class audit':<32} {audit_label(c):>14} "
-        f"{audit_label(i):>14} {audit_label(r):>14}"
-    )
+    for label, fn in (
+        ("Finite lifespans", scarcity_label),
+        ("Budget stratification", strat_label),
+        ("Niche differentiation", select_label),
+        ("Per-class audit", audit_label),
+    ):
+        lines.append(f"  {label:<28}" + "".join(f"{fn(r):>{col}}" for r in results))
 
     lines.append("")
     lines.append("─" * 80)
-    lines.append("  INTERPRETATION")
+    lines.append("  INTERPRETATION (read against the measured rows above, not as a script)")
     lines.append("─" * 80)
     lines.append("")
-    lines.append("  CONTROL (conservation ON):  All four emergent properties present.")
-    lines.append("  IMMORTAL (no depletion):    Zero emergence. No depletion = no scarcity")
-    lines.append("                              = no differentiation = nothing to audit.")
-    lines.append("  RANDOM (unstructured):      Scarcity exists (agents die) but class-selective")
-    lines.append("                              properties vanish. Depletion without structure")
-    lines.append("                              produces death without meaning.")
+    lines.append("  CONTROL:         conservation ON, class-selective, every affinity layer stripped.")
+    lines.append("  IMMORTAL:        no depletion. Nothing is consumed, so nothing is scarce,")
+    lines.append("                   differentiated, or auditable — and zero signal is returned")
+    lines.append("                   by construction, so 'no economic output' is defined in.")
+    lines.append("  RANDOM:          v1.0.0 condition — class-blind stripping at ~1 layer per")
+    lines.append("                   environment key. Depletion rate NOT matched to control.")
+    lines.append("  RANDOM-MATCHED:  v1.0.1 condition — class-blind stripping of exactly as many")
+    lines.append("                   layers as control would strip. Isolates structure from rate.")
+    lines.append("                   For pure-class agents (selectivity experiment) it is")
+    lines.append("                   identical to control by construction.")
     lines.append("")
-    lines.append("  Two factors are both necessary:")
-    lines.append("    1. DEPLETION (mass decreases on interaction)")
-    lines.append("    2. STRUCTURE (depletion is class-selective and accountable)")
-    lines.append("")
-    lines.append("  The conservation law provides both. Remove either: emergence degrades.")
-    lines.append("  Remove both: emergence disappears entirely.")
+    lines.append("  What the study can support: the programmed depletion and selection rules")
+    lines.append("  affect the measured outputs, and per-class audit requires class-selective")
+    lines.append("  stripping. Whether structured, irreversible depletion is a *necessary*")
+    lines.append("  condition in general is the paper's hypothesis, not a result these four")
+    lines.append("  fixtures establish (see paper §9 and the v1.0.1 errata).")
     lines.append("=" * 80)
 
     return "\n".join(lines)
