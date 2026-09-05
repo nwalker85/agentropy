@@ -13,7 +13,7 @@ a = factory.build_agent([("beta", b"x"*32), ("alpha", b"y"*64)])
 b = copy.deepcopy(a)
 for tag, ag in (("copy A", a), ("copy B", b)):
     r = gw.process_tool_call(ag)
-    print(f"  {tag}: outcome={r['outcome']} success={r['success']} layers_stripped={r.get('layers_stripped', r.get('layers_consumed','?'))}")
+    print(f"  {tag}: outcome={r['outcome']} success={r['success']} layers_charged={r['layers_charged']}")
 
 print("== 1b. OVERCHARGE: 12 beta + ballast, one visit")
 c = factory.build_agent([("beta", b"x"*32)]*12 + [("alpha", b"y"*64)])
