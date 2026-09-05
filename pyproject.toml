@@ -1,0 +1,20 @@
+[project]
+name = "agentropy"
+version = "1.0.1"
+description = "Agentropy / Agent Mass Theory — reference implementation of a byte-accounting conservation identity for encrypted-layer agents, with four domain models and an ablation study."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Nathan Walker" }]
+dependencies = ["cryptography>=3.4.8"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.urls]
+Repository = "https://github.com/nwalker85/agentropy"
+"Deposited artifact (v1.0.0)" = "https://doi.org/10.5281/zenodo.20818597"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
