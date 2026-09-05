@@ -585,6 +585,12 @@ def summary():
 # =============================================================================
 
 if __name__ == "__main__":
+    # v1.0.1: AgentBehavior.choose_node draws from the module-level `random`,
+    # which this demo never seeded, so every run differed (the reviewer saw
+    # 0/0 then 2/1 speciation survivors). Seed it so the reference numbers in
+    # paper/marketplace.md are reproducible. Override with AMT_SEED to sample
+    # the run-to-run distribution.
+    random.seed(int(os.environ.get("AMT_SEED", "42")))
     demo_1_topology()
     demo_2_single_agent()
     demo_3_competition()
