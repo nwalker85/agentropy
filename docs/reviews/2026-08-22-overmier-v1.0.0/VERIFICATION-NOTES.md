@@ -193,20 +193,21 @@ Of the matrix's six "Interpretive Judgments Requiring Author Review", none is a 
 
 Semantic-versioning patch: **fixes and corrections only.** No uniqueness, settlement, signing, or external anchoring — those change the threat model and belong to v2 with their own design record. A new Zenodo version deposit will mint a version DOI under the existing concept DOI; the v1.0.0 DOI stays immutable and the review keeps pointing at it.
 
-### 3.1 Code fixes
+### 3.1 Code fixes (status as shipped on `release/v1.0.1`, 2026-09-05)
 
-| Priority | Fix | Files | Closes item(s) | Reviewer rec. |
-|---|---|---|---|---|
-| P0 | Determinism: `sorted()` neighbour iteration; sort hazard-class sets | `amt_extensions.py:841`, `amt_core.py:267` | 24 | #8, #10 |
-| P0 | Gateway price enforcement: select exactly `base_cost` layers of the tool class; reject underfunded payment *before* tool execution; outcome `insufficient_funds` | `amt_token_economy.py:165-215`; needs a bounded-count variant of `interact()` in `amt_core.py` | 3, 5, 6, 7, 9 | #4 |
-| P1 | Marketplace regeneration clock: initialise `last_tick` from sim-time (set on `add_node`); remove the `or` fallback | `amt_marketplace.py:64, 72` | 16, §2.2 | — |
-| P1 | Nutrient accounting: `_total_cycled` counts only what was actually accreted; return unused budget to the pool; report created overhead | `amt_marketplace.py:171, 282` | 17, 18 (measured, not enforced) | #7 (partial) |
-| P1 | Remove unconditional "KEY INSIGHT" prints, or compute them from the measured result (survival-distance, "thrive", "could not afford") | `amt_physical_iot_demo.py:488`, `amt_marketplace_demo.py:445-449`, `amt_token_economy_demo.py:207-219` | 7, 15, 19 | #9 |
-| P1 | IoT scale demo: one shared topology across agents; report decoded-vs-requested budget error and gate-blocked count in the demo output | `amt_physical_iot_demo.py:405` | 12, 13, 14, §2.4 | — |
-| P2 | Ablation controls: random condition removes the *same count* the control would; derive signal/loss from actual decryption of the removed layers instead of `// 2` | `amt_ablation.py:112-131` | 20, 21 | #8 |
-| P2 | `requirements.txt` / `pyproject.toml` pinning `cryptography`; `tests/` turning the headline assertions into pytest (conservation identity, price enforcement, determinism across `PYTHONHASHSEED`, regeneration after N ticks, copy-replay **documented as a known limitation test**, not a pass); CI | repo root | 26 | #10 |
-| P2 — deferred | Multi-seed runner: N seeds → mean ± CI for calls/survivors | — | 24, 26 | #8 — v1.0.1 records the observed range in the errata instead |
-| — not a fix | Stratification fixture (item 23): the 3:1 is by construction and the paper says so; the correction is wording (§3.2), not a fixture change (that would be a new experiment) | — | 23 | #8, #9 |
+| Priority | Fix | Files | Closes item(s) | Reviewer rec. | Shipped |
+|---|---|---|---|---|---|
+| P0 | Determinism: `sorted()` neighbour iteration | `amt_extensions.py` `reachable_from` | 24 | #8, #10 | **yes** — `e925a10`. `amt_core.py:267` `key_classes` left as a `set` (membership/count only; repr order harmless). Token demo identical under hash seeds 0/1/2; 2,000-agent scale run identical. |
+| P0 | Gateway price enforcement: `interact(max_layers=)`, `Node.process(max_layers=)`; refuse `insufficient_funds` before consumption; strip exactly `base_cost` (asserted) | `amt_core.py`, `amt_extensions.py`, `amt_token_economy.py` | 3, 5, 6, 7, 9 | #4 | **yes** — `023e368`. Kurt's harness on the patched tree: copied 1-layer calls `success=false, layers_charged=0`; 12-layer agent `layers_charged=3`. Reference numbers change: survival 45.5 % → 97.5 %, ratio 2.1× → 9.8× (errata E14). |
+| P1 | Marketplace regeneration clock: `last_tick=None` until `add_node` sets sim-time; `regenerate(0.0)` valid | `amt_marketplace.py` | 16, §2.2 | — | **yes** — `689dc0f`. `verify_03`: 5/10/15/20. Kurt's `tick(10)` → 100. |
+| P1 | Nutrient accounting: count only embodied payload; keep the rest; track minted overhead; report system-level mass | `amt_marketplace.py`, `amt_marketplace_demo.py` | 17, 18 (measured, not enforced) | #7 (partial) | **yes** — `689dc0f`. Recycling 77.3 % → 29.3 %; minted 16,871 B = 14,267 payload + 2,604 overhead. |
+| P1 | "KEY INSIGHT" prints derived from measured results | the three `*_demo.py` | 7, 15, 19 | #9 | **yes** — in `023e368`, `689dc0f`, `6008a6c`. |
+| P1 | IoT scale demo: one shared topology; requested-vs-decoded table; gate-blocked count; gate-cannot-bind statement | `amt_physical_iot_demo.py` | 12, 13, 14, §2.4 | — | **yes** — `6008a6c`. Blocked 0/750; heaviest 90,716 B vs floor 512,000 B; totals unchanged (750 / 32,486 / 0). |
+| P2 | Ablation: honest signal/loss for RANDOM; new RANDOM-MATCHED (count parity); interpretation from measured rows | `amt_ablation.py`, `amt_ablation_demo.py` | 20, 21 | #8 | **yes** — `492b5fc`. RANDOM stratification 1.90× → **3.12×** (the "degradation" was the `// 2` split); RANDOM-MATCHED 2.87×, niche 1.00, per-class 0 %. Paper §9 rewritten accordingly (errata E12). |
+| P2 | `requirements*.txt`, `pyproject.toml`, `tests/` (31), GitHub Actions CI incl. `cryptography==3.4.8` job | repo root | 26 | #10 | **yes** — `09ca7b7`. 31 passed on 3.14/46.0.4 and 3.10/3.4.8. |
+| P2 | Marketplace demo seeds its behaviour RNG (`AMT_SEED`) | `amt_marketplace_demo.py` | 19a | #8 | **yes** — `e36aa8f`. Byte-identical across hash seeds except timing lines. |
+| P2 — deferred | Multi-seed runner: N seeds → mean ± CI | — | 24, 26 | #8 | **no** — errata records observed ranges instead. |
+| — not a fix | Stratification fixture (item 23): 3:1 is by construction; wording only | — | 23 | #8, #9 | wording shipped in `8fca…`→`8abdefa` (errata E12). |
 
 ### 3.2 Paper wording corrections (same release)
 
