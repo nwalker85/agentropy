@@ -70,6 +70,12 @@ def derive_key(master_secret: bytes, key_class: str) -> bytes:
     return hkdf.derive(master_secret)
 
 
+# AES-256-GCM layer geometry: 12-byte nonce || ciphertext || 16-byte tag.
+# len(encrypted) = LAYER_OVERHEAD + len(plaintext). Every layer, data or empty,
+# carries exactly this many bytes of pure loss.
+LAYER_OVERHEAD = 12 + 16
+
+
 def encrypt_layer(key: bytes, plaintext: bytes) -> bytes:
     """
     Encrypt a layer payload using AES-256-GCM.
@@ -360,10 +366,14 @@ class InteractionResult:
         return "\n".join(lines)
 
 
-def interact(agent: Agent, env: Environment) -> InteractionResult:
+def interact(
+    agent: Agent,
+    env: Environment,
+    max_layers: Optional[int] = None,
+) -> InteractionResult:
     """
     The fundamental operation: environment acts upon agent.
-    
+
     Algorithm:
         1. Check mass gate — can the agent physically enter?
         2. For each layer the environment has affinity for:
@@ -373,10 +383,16 @@ def interact(agent: Agent, env: Environment) -> InteractionResult:
         3. Compute ΔL vector — loss distribution across key classes
         4. Record interaction
         5. Return complete measurement
-    
+
     The agent does NOT participate in this process.
     The agent is acted upon.
-    
+
+    max_layers (v1.0.1): when given, at most this many affinity layers are
+    decrypted, in the agent's layer order; the remaining affinity layers
+    survive untouched. This is how a gateway charges a *declared* price
+    instead of draining every layer of the class. None (default) keeps the
+    v1.0.0 behaviour: every affinity layer is stripped.
+
     Conservation law verified per interaction:
         mass_before = mass_after + total_signal + total_loss
     """
@@ -403,9 +419,14 @@ def interact(agent: Agent, env: Environment) -> InteractionResult:
     
     for layer in agent.layers:
         key = env.derive_key_for_class(layer.key_class)
-        
+
         if key is None:
             # Environment has no affinity for this class — layer survives
+            surviving_layers.append(layer)
+            continue
+
+        if max_layers is not None and len(results) >= max_layers:
+            # Declared price already collected — remaining affinity layers survive
             surviving_layers.append(layer)
             continue
         

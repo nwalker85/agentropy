@@ -33,7 +33,7 @@ from collections import Counter
 
 from amt_core import (
     Agent, Layer, Environment, AgentFactory,
-    InteractionResult, interact, accrete,
+    InteractionResult, interact, accrete, LAYER_OVERHEAD,
 )
 from amt_extensions import (
     Node, AccretionPolicy, AgentBehavior, Topology,
@@ -61,16 +61,29 @@ class ResourcePool:
     capacity: float             # Maximum resource units
     current: float              # Current available units
     regeneration_rate: float    # Units per second (regenerated passively)
-    last_tick: float = field(default_factory=time.time)
+    # Clock basis for regeneration. None until the first regenerate() call or
+    # until a topology sets it (MarketplaceTopology.add_node sets it to its
+    # simulation time). v1.0.0 defaulted this to wall-clock time.time(), so a
+    # simulation ticking from t=0 lost its first tick's regeneration (elapsed
+    # clamped to 0) before the clock rebased — Overmier review, marketplace §.
+    last_tick: Optional[float] = None
     _depletion_history: list = field(default_factory=list, repr=False)
 
-    def regenerate(self, current_time: float = None):
+    def regenerate(self, current_time: Optional[float] = None):
         """
         Regenerate resources based on elapsed time.
         Capped at capacity. This is passive environmental renewal.
+
+        `current_time` is the caller's clock (simulation seconds or wall-clock).
+        An explicit 0.0 is a valid time (v1.0.0 used `or`, which fell back to
+        wall-clock on 0.0). The first call with an unset basis only establishes
+        the basis; callers that know the start time should set `last_tick`.
         """
-        now = current_time or time.time()
-        elapsed = max(0, now - self.last_tick)
+        now = time.time() if current_time is None else current_time
+        if self.last_tick is None:
+            self.last_tick = now
+            return
+        elapsed = max(0.0, now - self.last_tick)
         regen = elapsed * self.regeneration_rate
         self.current = min(self.capacity, self.current + regen)
         self.last_tick = now
@@ -133,7 +146,8 @@ class NutrientCycler:
         self.cycle_threshold = cycle_threshold
         self._accumulated = 0
         self._total_deposited = 0
-        self._total_cycled = 0
+        self._total_cycled = 0            # nutrient bytes actually embodied as new payload
+        self._total_overhead_created = 0  # GCM overhead minted alongside (not from nutrients)
         self._cycle_count = 0
 
     def deposit(self, signal: int, loss: int):
@@ -153,12 +167,22 @@ class NutrientCycler:
     def accumulated(self) -> int:
         return self._accumulated
 
-    def cycle(self, factory: AgentFactory, key_classes: list) -> list:
+    def cycle(self, factory: AgentFactory, key_classes: list, max_layers: Optional[int] = None) -> list:
         """
         Convert accumulated nutrients into new layers.
 
         Creates layers distributed across the given key classes.
         Returns list of (key_class, payload) tuples for accretion.
+
+        Accounting (v1.0.1): only the payload bytes of the layers actually
+        returned are counted as cycled; nutrients not embodied stay in the
+        pool. v1.0.0 counted the whole budget as cycled and then let the
+        caller accrete only the first three specs, so the reported recycling
+        rate overstated what reached any agent (Overmier review, marketplace §).
+        The GCM overhead of each new layer is minted by the factory, not drawn
+        from nutrients; it is tracked separately so the system-level mass
+        picture can be *reported*. A global mass equation is not enforced —
+        that is v2 work.
 
         The factory creates legitimate mass. This is not a violation —
         accretion is separate from conservation-governed interaction.
@@ -167,9 +191,6 @@ class NutrientCycler:
             return []
 
         budget = self._accumulated
-        self._accumulated = 0
-        self._total_cycled += budget
-        self._cycle_count += 1
 
         # Distribute nutrients across key classes
         specs = []
@@ -187,12 +208,27 @@ class NutrientCycler:
                 else:
                     specs.append((kc, b""))
 
+        if max_layers is not None:
+            specs = specs[:max_layers]
+
+        used = sum(len(payload) for _, payload in specs)
+        self._accumulated = budget - used
+        self._total_cycled += used
+        self._total_overhead_created += LAYER_OVERHEAD * len(specs)
+        self._cycle_count += 1
+
         return specs
+
+    @property
+    def total_ciphertext_created(self) -> int:
+        """Bytes of new agent mass minted from this cycler: payload + GCM overhead."""
+        return self._total_cycled + self._total_overhead_created
 
     def summary(self) -> str:
         return (f"NutrientCycler(accumulated={self._accumulated}, "
                 f"deposited={self._total_deposited}, "
                 f"cycled={self._total_cycled}, "
+                f"overhead_created={self._total_overhead_created}, "
                 f"cycles={self._cycle_count})")
 
 
@@ -210,6 +246,8 @@ class MarketplaceNode:
         3. Accretion gated on resource pool availability
         4. Nutrient cycling creates new mass for future agents
     """
+
+    ACCRETION_LAYER_CAP = 3  # layers accreted per visit
 
     def __init__(
         self,
@@ -273,13 +311,17 @@ class MarketplaceNode:
             self.resource_pool.current >= self.accretion_cost):
 
             # Check if nutrient cycler has layers ready
-            if self.nutrient_cycler.can_cycle:
+            if self.nutrient_cycler.can_cycle and factory:
                 kc = key_classes or list(self._node._key_secrets.keys())
-                new_specs = self.nutrient_cycler.cycle(factory, kc)
+                # Ask for exactly what will be accreted, so the cycler's
+                # accounting matches what reaches the agent (v1.0.1).
+                new_specs = self.nutrient_cycler.cycle(
+                    factory, kc, max_layers=self.ACCRETION_LAYER_CAP,
+                )
 
-                if new_specs and factory:
+                if new_specs:
                     # Create accretion layers and accrete onto agent
-                    for kc_name, payload in new_specs[:3]:  # cap at 3 layers
+                    for kc_name, payload in new_specs:
                         layer = factory.create_layer(kc_name, payload)
                         accrete(agent, [layer])
 
@@ -338,6 +380,10 @@ class MarketplaceTopology:
         """Add a marketplace node to the topology."""
         self._nodes[mkt_node.node_id] = mkt_node
         self._topology.add_node(mkt_node.node)
+        # Put the pool on the simulation clock so the first tick regenerates
+        # (v1.0.1; see ResourcePool.last_tick).
+        if mkt_node.resource_pool.last_tick is None:
+            mkt_node.resource_pool.last_tick = self._sim_time
 
     def connect(self, from_id: str, to_id: str, bidirectional: bool = True):
         self._topology.connect(from_id, to_id, bidirectional=bidirectional)

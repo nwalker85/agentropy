@@ -442,11 +442,23 @@ def demo_6_speciation():
     print(f"  {'Beta-heavy':<15s} {beta_survived:>10d} "
           f"{beta_survived/25*100:>7.1f}% {beta_interactions:>14d}")
 
-    print(f"\n  KEY INSIGHT:")
-    print(f"  Alpha-heavy agents thrive at feeding_a (alpha key).")
-    print(f"  Beta-heavy agents thrive at feeding_b (beta key).")
-    print(f"  Different layer compositions = different ecological niches.")
-    print(f"  Speciation is emergent from mass physics, not programmed.")
+    # KEY INSIGHT — stated from the measured result (v1.0.1). v1.0.0 printed
+    # "thrive" unconditionally, including on runs where both profiles ended
+    # with zero survivors (Overmier review, marketplace §).
+    print(f"\n  KEY INSIGHT (derived from this run):")
+    if alpha_survived == 0 and beta_survived == 0:
+        print(f"  Neither profile survived 25 steps in this run. No niche-differential")
+        print(f"  survival can be read from it.")
+    elif alpha_survived == beta_survived:
+        print(f"  Both profiles ended with {alpha_survived} survivor(s). No niche-differential")
+        print(f"  survival in this run.")
+    else:
+        better = "Beta-heavy" if beta_survived > alpha_survived else "Alpha-heavy"
+        print(f"  {better} agents survived at a higher rate in this run "
+              f"({alpha_survived} vs {beta_survived} of 25).")
+        print(f"  That is niche-DIFFERENTIAL SURVIVAL of two predefined profiles, not speciation:")
+        print(f"  no agent is born, so no profile can arise or spread.")
+    print(f"  Single run, process-sensitive; repeated runs vary (see v1.0.1 errata).")
 
 
 # =============================================================================
@@ -491,13 +503,24 @@ def demo_7_scale():
     total_accretions = sum(
         n._accretion_count for n in topo._nodes.values()
     )
+    total_overhead = sum(
+        n.nutrient_cycler._total_overhead_created for n in topo._nodes.values()
+    )
+    total_created = sum(
+        n.nutrient_cycler.total_ciphertext_created for n in topo._nodes.values()
+    )
 
     print(f"  Nutrient Cycling:")
-    print(f"    Total deposited:  {total_deposited:,} B")
-    print(f"    Total cycled:     {total_cycled:,} B")
+    print(f"    Total deposited:  {total_deposited:,} B  (nutrient bytes captured from S and L)")
+    print(f"    Total cycled:     {total_cycled:,} B  (nutrient bytes embodied as new payload; v1.0.1 counts only what was accreted)")
     print(f"    Total accretions: {total_accretions}")
     print(f"    Recycling rate:   {total_cycled/total_deposited*100:.1f}%"
           if total_deposited > 0 else "    Recycling rate:   N/A")
+    print(f"\n  System-level mass (measured, NOT enforced — see errata):")
+    print(f"    New ciphertext minted by the factory: {total_created:,} B")
+    print(f"      = {total_cycled:,} B payload from nutrients + {total_overhead:,} B GCM overhead minted fresh")
+    print(f"    The 28 B/layer overhead is created, not recycled. No global equation ties")
+    print(f"    it to the mass agents lost; interact() conservation is per-interaction only.")
 
     # Resource state
     print(f"\n{topo.resource_summary()}")
@@ -562,6 +585,12 @@ def summary():
 # =============================================================================
 
 if __name__ == "__main__":
+    # v1.0.1: AgentBehavior.choose_node draws from the module-level `random`,
+    # which this demo never seeded, so every run differed (the reviewer saw
+    # 0/0 then 2/1 speciation survivors). Seed it so the reference numbers in
+    # paper/marketplace.md are reproducible. Override with AMT_SEED to sample
+    # the run-to-run distribution.
+    random.seed(int(os.environ.get("AMT_SEED", "42")))
     demo_1_topology()
     demo_2_single_agent()
     demo_3_competition()

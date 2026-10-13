@@ -1,0 +1,4 @@
+# Runtime dependency of the reference implementation.
+# Verified range: the v1.0.0 review ran on cryptography 3.4.8 (Python 3.10.12);
+# v1.0.1 was verified on 3.4.8, 46.0.4 and 50.0.1 (Python 3.10, 3.12, 3.14).
+cryptography>=3.4.8

@@ -1,0 +1,61 @@
+# Errata and changes — Agentropy v1.0.1
+
+**Applies to:** Agentropy v1.0.0, DOI [10.5281/zenodo.20818597](https://doi.org/10.5281/zenodo.20818597), `main@91df6c0`, tag `v1.0.0`.
+**Prompted by:** Kurt Overmier, *"Pressure-Testing Agentropy: From Conservation Metaphor to Accountable Agent Infrastructure"*, open technical review, draft for author review received 2026-08-22 ("Overmier 2026"). Verification record, item numbers and receipts: [`docs/reviews/2026-08-22-overmier-v1.0.0/VERIFICATION-NOTES.md`](../docs/reviews/2026-08-22-overmier-v1.0.0/VERIFICATION-NOTES.md).
+**Scope:** patch release. Code fixes for confirmed bugs; wording corrections where the papers claimed more than the code does; no new architecture. The v1.0.0 text stays deposited and citable; corrections are marked inline as *v1.0.1 erratum* / *v1.0.1 wording* so a reader can see what changed and why. Appendix C of the main paper is unchanged.
+
+## 1. Corrections to claims (the papers overstated the code)
+
+| # | Where (v1.0.0) | Claimed | Correct | Verification item |
+|---|---|---|---|---|
+| E1 | `agentropy.md` §4.3, §7.2, §10.1; `token_economy.md` abstract, §8.2 | Layers "cannot be … double-spent"; "the encrypted form is gone"; ciphertexts "cannot be duplicated because they are AES-256-GCM ciphertexts" | Consumption is a list reassignment inside one process. Ciphertext is copyable bytes; a copied agent pays twice. AES-GCM gives confidentiality and integrity, not uniqueness. `cross_org_accountability.md` §9 already listed cloning as an attack; `token_economy.md` §8.2 contradicted it. | 4, 8, 28 |
+| E2 | `token_economy.md` §3.2, §4.1, §8.4, §8.5; `agentropy.md` §4.3 | "costs exactly 3 layers"; "12 beta layers … exactly 4 LLM calls"; the gateway "cannot cheat" | v1.0.0's gateway stripped every layer of its class and never consulted `base_cost`; success was "≥1 layer stripped and alive". One layer bought a "successful" three-layer call; twelve layers bought one call. **Fixed in code** (F2); the sentences are true of v1.0.1. | 3, 5, 6, 7, 9 |
+| E3 | `token_economy.md` §7.2 | Budget agent "partially pays for GPT-4 (… tool still fires)" | The paper documented the bug as intended behaviour. v1.0.1 refuses the call before consumption. Scenario numbers updated. | 6, 7 |
+| E4 | `cross_org_accountability.md` §2 | An alpha environment "cannot even detect the existence of beta layers" | `Layer.key_class` is plaintext metadata read by every environment to select a key. Class *presence and count* are visible; *contents* are not. | 2 |
+| E5 | `cross_org_accountability.md` title, §3, §5, §10; `agentropy.md` §3.3, §7.2, §13 | "Without Trust"; "Non-repudiation"; "Zero Trust"; "No trust, no protocol, no consensus mechanism, no identity provider" | The honest-environment assumption was stated (§9 / §11.1) but the headline sentences claimed past it. The reference "public ledger" is an unsigned, unanchored in-memory list; the construction shows self-consistency, not non-repudiation, and cannot prove an interaction happened, was reported honestly, or that nothing was omitted. Title amended to "…Without a Trusted Intermediary for the Arithmetic…". | 10, 11, 11a |
+| E6 | `physical_iot.md` §2.1, §2.3 | The mapping "is bidirectional"; an observer "knows exactly what physical resources remain" | Encode/decode is not invertible: 50 Wh → 45.396; 100 MB → 128; 500 ops → 453.96; 30 s → 26.984; 50 reads → 43.82 (−9 % to +28 %). Causes: 28-B GCM overhead per layer, 256-B layer quantisation, 512-B payload cap. Table added; demo prints it. | 12 |
+| E7 | `physical_iot.md` §3.3; `agentropy.md` §5.3 | "As battery depletes … (from previous agents consuming it), the mass gate tightens. Heavier agents get blocked." | Two problems. (a) The scale demo rebuilt the topology per agent, so no battery was ever shared — **fixed** (F5). (b) Still true: the tightest gate is 512,000 B and the heaviest agent either experiment can build is ~107 KB, so the gate cannot bind. Blocked count is 0 of 750 visits. Load-shedding is implemented and not exercised. | 13, 14, §2.4 |
+| E8 | `physical_iot.md` §5.3; demo | "Battery budget directly predicts survival distance" | Printed unconditionally; the run showed 5.0 locations in every battery tier and 0 survivors. Demo now derives the line from the measured bins. | 15 |
+| E9 | `marketplace.md` §2.2 | Pools "regenerate passively over time" (implied: from the first tick) | One-tick offset: `last_tick` defaulted to wall-clock, so the first simulation tick's regeneration was lost; 29 of 30 ticks regenerated. The reviewer's single-tick probe read zero and the review says regeneration "does not occur" — **that is the one factual overstatement in the review**. **Fixed** (F3). | 16 (OVERSTATED) |
+| E10 | `marketplace.md` §3.2, §6.3; `agentropy.md` §6.3 | "No mass is created from nothing"; "77.3 % of dead agent mass is recycled" | The cycler counted its whole budget as cycled while the node accreted at most three layers; every minted layer carries 28 B of fresh overhead no nutrient supplied (300 B → 356 B / 440 B). No system-level mass equation exists. **Accounting fixed** (F4): recycling is 29.3 %; minted overhead is now reported, not enforced. | 17, 18 |
+| E11 | `marketplace.md` §5, §7, §10; `agentropy.md` §6.3, §7.2, §13 | "Carrying capacity", "boom/bust", "speciation", "Gause's competitive exclusion", "a complete population ecology" | No reproduction, so the population can only decline; the "carrying capacity" is a tail average of a declining cohort; the "species" are two hand-built profiles whose survival ranking flips between runs; the demo printed "thrive" regardless of the numbers. Replaced with tail population, monotonic decline, niche-differential survival. | 19, 19a |
+| E12 | `agentropy.md` §1.1, §7.4, §9.2–9.6, §13, abstract | "A systematic ablation study establishes necessity"; RANDOM "degrades" stratification to 1.9× and destroys niche differentiation; "both factors are necessary" | Three control defects: RANDOM's depletion rate was not matched to CONTROL (~1 layer per env key vs all affinity layers); RANDOM's signal was an invented `consumed // 2`; IMMORTAL returns zero signal by construction. With honest signal accounting RANDOM stratification is **3.12×**, not 1.9×. With the rate matched (new RANDOM-MATCHED) stratification is 2.87× and niche score is 1.00 — identical to CONTROL for the pure-class fixture, which therefore cannot separate structure from depletion. What survives: depletion is necessary for every dynamic measured; class-selective structure is necessary for per-class attribution. "Establishes" → "is consistent with"; "both factors are necessary" withdrawn to a hypothesis. | 20–23, 23a |
+| E13 | `agentropy.md` §8.2–8.3 | Zero violations because "AES-256-GCM decryption [cannot] produce bytes from nowhere — a cryptographic impossibility" | The reason is Appendix B, not AES: `loss` is *defined* as `mass − signal`, so the identity cannot fail in a correct implementation. Zero violations over N trials confirms the bookkeeping and cannot make a definitional identity more confirmed. (The paper's own Appendix B already said "It holds because subtraction works"; §8.3 gave the wrong reason.) | 1 |
+| E14 | all four papers, `agentropy.md` §8.1 | Single-run integers (2,113 calls; 91 survivors; 457; 2,095; 77.3 %) presented as results | The v1.0.0 numbers were one process-dependent draw: `Topology.reachable_from` iterated a `set[str]`, so neighbour order — and hence every seeded run — varied with `PYTHONHASHSEED` (reviewer: 2,090–2,206 calls; author: 2,093–2,125). **Fixed** (F1); v1.0.1 reference runs are deterministic. Tables now show both columns and say so. A multi-seed mean ± interval is deferred. | 24, 25, 26b |
+| E15 | `agentropy.md` §11.1 | Threat model implicit | Added a paragraph stating who can do what to the v1.0.x reference implementation (copy agents, read classes, control ledgers, hold secrets). | review rec. #2 |
+
+## 2. Code changes (each a separate commit on `release/v1.0.1`)
+
+| # | Change | Files | Closes |
+|---|---|---|---|
+| F1 | `Topology.reachable_from` returns neighbours sorted by id — seeded runs are identical across processes | `amt_extensions.py` | E14 |
+| F2 | `interact(agent, env, max_layers=None)`; `Node.process(..., max_layers=None)`; `ToolGateway.process_tool_call` counts held layers against `base_cost`, refuses `insufficient_funds` before consumption, strips exactly the price (asserted). New call-record fields `declared_cost`, `layers_held`; new outcome `insufficient_funds`. `LAYER_OVERHEAD = 28` named in `amt_core` | `amt_core.py`, `amt_extensions.py`, `amt_token_economy.py`, `amt_token_economy_demo.py` | E2, E3 |
+| F3 | `ResourcePool.last_tick` is `None` until a topology sets it to simulation time; `regenerate(0.0)` is valid | `amt_marketplace.py` | E9 |
+| F4 | `NutrientCycler.cycle(max_layers=)` counts only embodied payload as cycled, keeps the rest, tracks minted overhead; `MarketplaceNode` accretes exactly what it asked for; scale demo reports system-level mass | `amt_marketplace.py`, `amt_marketplace_demo.py` | E10 |
+| F5 | IoT scale demo shares one topology; prints requested-vs-decoded table, gate-blocked count, and a measured KEY INSIGHT | `amt_physical_iot_demo.py` | E7, E8, E6 |
+| F6 | Ablation: RANDOM signal/loss from real geometry; new RANDOM-MATCHED condition; summary interpretation reads against measured rows | `amt_ablation.py`, `amt_ablation_demo.py` | E12 |
+| F7 | Demo "KEY INSIGHT" text derived from results (token budget agent; marketplace speciation; IoT survival) | the three `*_demo.py` | E3, E8, E11 |
+| F8 | Marketplace demo seeds its behaviour RNG (`AMT_SEED`, default 42) so the reference run is reproducible | `amt_marketplace_demo.py` | E14 |
+| F9 | `tests/` (31 tests, incl. known-limitations tests that pass while the limitation is present), `requirements*.txt`, `pyproject.toml`, GitHub Actions CI on 3.10/3.12/3.13 and on `cryptography==3.4.8` | repo root | review rec. #10 |
+
+Behavioural consequences of F2 that change reference numbers: token-economy survival 45.5 % → 97.5 %; rich/poor call ratio 2.1× → 9.8×; 728 of 2,574 calls are now refused. These are reported, not hidden.
+
+## 3. Not changed in v1.0.1 (v2 work, needs a design record and a threat model)
+
+- Uniqueness / anti-replay across copies (signed capabilities, settlement, ledger or hardware) — E1; review recs #3, #6.
+- Hiding key-class presence cryptographically — E4; rec #5.
+- Signing and externally anchoring commitments — E5; rec #6.
+- A global mass equation over factory, accretion, discarded layers, overhead and pools — E10; rec #7 (v1.0.1 measures, does not enforce).
+- Reproduction in the ecology model — E11.
+- Making the IoT mass gate bind (heavier agents or lower thresholds) — E7.
+- A multi-seed runner with intervals — E14; rec #8.
+- Repaired ablation fixtures (mixed-class agents in Experiment 3; an immortal condition that still yields signal) — E12; rec #8.
+- Renaming the central result — rec #1; the author's call. v1.0.1 changes "establishes" to "is consistent with" and describes the equation as an accounting identity where the text had implied more; the title is unchanged.
+
+## 4. What the review got wrong about v1.0.0 (for the record)
+
+- **E9 / item 16** — regeneration is a one-tick offset, not absent. The review's harness ticks once (`topology.tick(10)`) and reads the pool; that single tick is the one that is lost.
+- **Item 27** — the review reads v1.0.0 as claiming "a substrate-independent law of life" / "general theory of life-like dynamics". `agentropy.md` Appendix C says: *"This paper makes only the weaker, testable claim (a necessary condition for life-like dynamics); the stronger claim is argued in companion work"*, and opens *"none of this paper's empirical claims depend on them."* That hedge stands as written in v1.0.1.
+- **Item 14** — the IoT mass gate is implemented, not absent; the review says the demo "constructs a fresh topology" (true) but does not say the gate could never bind anyway (it cannot; §1 E7). That second point is the author's own finding.
+
+Everything else in the review's eleven sections and 23-row evidence matrix was confirmed against the deposited bytes — see the verification notes for the receipts.

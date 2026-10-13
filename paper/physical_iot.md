@@ -52,13 +52,25 @@ Each physical resource type maps to an AMT key class via a fixed conversion fact
 mass_bytes = physical_units × conversion_factor
 ```
 
-This mapping is bidirectional:
+The mapping can be read back:
 
 ```
 physical_units = mass_bytes / conversion_factor
 ```
 
-An agent with 50,000 bytes of alpha mass has a 50 Wh battery budget (50,000 / 1000). An agent with 100 bytes of beta mass has a 100 MB bandwidth budget (100 / 1). The conversion factors are design decisions frozen at system setup — they calibrate the relationship between abstract mass and physical reality.
+An agent with 50,000 bytes of alpha mass reads as a 50 Wh battery budget (50,000 / 1000). The conversion factors are design decisions frozen at system setup — they calibrate the relationship between abstract mass and physical reality.
+
+*v1.0.1 erratum — the round trip is not numerically invertible.* v1.0.0 called the mapping "bidirectional". Encoding a budget into layers quantises it (256-byte layers, 512-byte payload cap, an 80/20 data/empty split) and every layer adds 28 bytes of AES-GCM overhead that the decoder counts as mass. Reading the paper's §5.1 budget back through the implementation's own interpreter gives:
+
+| Resource | Requested | Decoded | Error |
+|---|---:|---:|---:|
+| Battery | 50 Wh | 45.396 Wh | −9.2 % |
+| Bandwidth | 100 MB | 128 MB | +28.0 % |
+| Storage | 500 ops | 453.96 ops | −9.2 % |
+| CPU | 30 s | 26.984 s | −10.1 % |
+| Sensors | 50 reads | 43.82 reads | −12.4 % |
+
+(Overmier 2026, physical-IoT section; reproduced in `tests/test_known_limitations.py` and printed by `amt_physical_iot_demo.py`.) The errors are deterministic functions of the encoding and could be calibrated out; v1.0.x does not do so.
 
 ### 2.2 Layer Composition as Resource Allocation
 
@@ -85,7 +97,7 @@ profile = {"alpha": 45000, "beta": 80, "gamma": 30000, "delta": 10000, "epsilon"
 → battery: 45.0 Wh, bandwidth: 80.0 MB, storage: 300 ops, cpu: 20.0 s, sensor: 30 reads
 ```
 
-An external observer seeing the agent's mass profile knows exactly what physical resources remain — without knowing the agent's identity, intent, or history.
+An external observer seeing the agent's mass profile can estimate what physical resources remain — to within the encoding error tabulated in §2.1 — without knowing the agent's identity, intent, or history.
 
 ---
 
@@ -132,7 +144,9 @@ Mass gates are computed from battery state:
 | < 20% | 500 KB |
 | Shore power | Unlimited |
 
-As battery depletes at a location (from previous agents consuming it), the mass gate tightens. Heavier agents get blocked. This creates natural load-shedding without any load-balancing algorithm.
+As battery depletes at a location (from previous agents consuming it), the mass gate tightens. Heavier agents get blocked. This would create natural load-shedding without any load-balancing algorithm.
+
+*v1.0.1 erratum — not exercised by the reported experiments.* Two things kept this mechanism from ever acting in v1.0.0. First, the scale demo rebuilt the five-location topology for every agent, so no agent saw a battery another agent had drawn down (Overmier 2026, item 13; fixed in v1.0.1 — one topology is shared). Second, and still true in v1.0.1: the tightest gate is 500 KB (512,000 B) and the heaviest agent either experiment can build is about 107 KB (the §5.1 agent is 106,603 B; the scale demo's maximum is 94,461 B), so the gate cannot bind for any agent in this configuration. The demo now reports the gate-blocked count, which is 0 of 750 visits. Depletion is demonstrated; gating is not. Making the gate bind needs heavier agents or lower thresholds — an experiment-design change deferred to v2.
 
 ---
 
@@ -207,7 +221,7 @@ Notice: mountain strips zero layers because the agent already lost all its alpha
 | Total layers stripped | 32,486 |
 | Conservation violations | **0** |
 
-Every agent completes the full 5-location route. Resource consumption varies by budget size but conservation holds universally.
+Every agent enters all five locations and none survives the route; no agent is blocked by a mass gate (see §3.3 erratum). Resource consumption varies by budget size but the accounting identity holds universally. The v1.0.0 demo printed "Battery budget directly predicts survival distance" after this table; the measured survival distance was 5.0 locations in every battery tier, so the sentence was not supported by the run (Overmier 2026, item 15). v1.0.1 derives that line from the measured bins. These totals are deterministic (the demo is seeded) and unchanged by the shared-topology fix.
 
 ---
 
@@ -269,9 +283,9 @@ This is exactly the travel route modeled in our demo. Real-time connectivity tra
 
 **Unified accounting**: One conservation law governs all resource types. No separate power manager, bandwidth throttler, and storage quota system.
 
-**Physical enforcement**: Conservation prevents overconsumption by construction. An agent with zero alpha mass cannot consume battery — not because a policy blocks it, but because there are no layers to decrypt.
+**Physical enforcement**: Conservation prevents overconsumption *of the simulated budget* by construction. An agent with zero alpha mass cannot consume battery — not because a policy blocks it, but because there are no layers to decrypt. Nothing in v1.0.x couples that debit to a measured physical quantity; this is a resource-labelling simulation until §6 is built and calibrated (§7.2).
 
-**Auditability**: Every watt-hour, megabyte, CPU-second, and sensor read is accounted for via merkle-anchored ledger. Perfect resource accounting without surveillance.
+**Auditability**: Every watt-hour, megabyte, CPU-second, and sensor read is accounted for in the local ledger and committed by Merkle root. Complete resource accounting without surveillance — under the honest-environment assumption, and with the ledger caveats of Walker 2026a §3 (v1.0.1 wording).
 
 ### 7.2 Limitations
 
@@ -305,7 +319,7 @@ AMT's conservation law enforces physical resource limits through mass physics. B
 
 No power management daemon. No bandwidth throttler. No storage quota. No CPU governor. Just conservation.
 
-At population scale (150 agents, 750 interactions), zero conservation violations occur. The conservation law is the resource manager. The math is the physics. The physics is the budget.
+At population scale (150 agents, 750 interactions), zero conservation violations occur. What v1.0.x demonstrates is a unified resource-budget *interface* with exact byte accounting over a simulated budget; the mass gate that would do the load-shedding is implemented but never binds in the reported configuration, and the encode/decode mapping carries a 9–28 % error (§2.1). Becoming a resource manager requires measured coupling to real discharge, transfer, compute and device state, with error bounds — §6 remains future work. *(Conclusion narrowed in v1.0.1.)*
 
 ---
 

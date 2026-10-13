@@ -1,4 +1,6 @@
-# Cross-Organizational Agent Accountability Without Trust: A Conservation Law Approach
+# Cross-Organizational Agent Accountability Without a Trusted Intermediary for the Arithmetic: A Conservation Law Approach
+
+*Title amended in v1.0.1 from "…Accountability Without Trust…". The honest-environment assumption (§9) was always stated; the old title overstated it. See `paper/ERRATA-v1.0.1.md`.*
 
 **Agent Mass Theory Applied to Multi-Party Agent Traversal**
 
@@ -91,11 +93,13 @@ This is verified by assertion in the `interact()` function. In the reference imp
 
 ### Key Classes and Information Asymmetry
 
-Key classes create *information asymmetry by design*. An environment that holds the secret for class `alpha` can decrypt alpha layers but cannot even detect the existence of `beta` layers (they are indistinguishable from random bytes). This means:
+Key classes create *information asymmetry by design* — over layer **contents**, not over layer **classes**. An environment that holds the secret for class `alpha` can decrypt alpha layers and cannot decrypt `beta` layers (their payloads are indistinguishable from random bytes). In the reference implementation each layer carries its `key_class` as plaintext metadata (`amt_core.py`, `Layer.key_class`), and the environment reads that tag to select a key; so the *existence and count* of beta layers is visible to every environment, and only their contents are hidden. This means:
 
 - An agent carrying layers for classes `{alpha, beta, gamma}` traversing an environment with keys for `{alpha}` will lose only its alpha layers.
-- The environment cannot determine that beta and gamma layers exist.
+- The environment can see that beta and gamma layers exist and how many there are; it cannot read them.
 - The agent cannot determine which layers were stripped (it only observes total mass change).
+
+*v1.0.1 erratum.* v1.0.0 said the environment "cannot even detect the existence of `beta` layers". That was false of the implementation (Overmier 2026, item 2). Hiding class *presence* would require encrypting or omitting the class tag and trial-decrypting under every held key — a design change with a cost, deferred to v2.
 
 ### Mass Gates
 
@@ -137,9 +141,9 @@ The public ledger does NOT contain:
 
 An authorized auditor can verify that a specific local entry exists in a public commitment by recomputing the Merkle path. This provides:
 
-- **Tamper evidence**: If a local entry is modified after publication, the Merkle root won't match.
+- **Tamper evidence**: If a local entry is modified after publication, the Merkle root won't match — *provided the root was preserved somewhere the operator does not control*.
 - **Selective disclosure**: The auditor can verify one entry without seeing the rest of the batch.
-- **Non-repudiation**: The operator cannot deny a committed transaction.
+- **Consistency, not non-repudiation** (*v1.0.1 wording*): the operator cannot present a disclosed entry that contradicts a root it published. The reference implementation's "public ledger" is an in-memory Python list (`amt_extensions.py`, `PublicLedger.commitments`); commitments are unsigned and not anchored to any party, timestamp, or chain outside the operator. It therefore cannot prove that a recorded interaction happened, that the executor reported it honestly, that omitted interactions do not exist, or that the whole history was not regenerated before presentation (Overmier 2026, "A Merkle Root Is a Witness, Not a Judge"). Non-repudiation requires signing and external anchoring — v2.
 
 ### Connection to Cube Protocol S4
 
@@ -233,7 +237,7 @@ The Merkle root is a one-way function over the concatenated hashes of individual
 
 ---
 
-## 5. The Scenario: Three Orgs, One Agent, Zero Trust
+## 5. The Scenario: Three Orgs, One Agent, No Shared Secrets After Deployment
 
 ### Organization Setup
 
@@ -473,7 +477,7 @@ We have demonstrated that the AMT conservation law provides cross-organizational
 
 5. **Behavior is emergent**: Budget-constrained agents skip expensive organizational domains. This creates natural economic incentive structures without pricing protocols.
 
-6. **The math is the accountability**: No trust, no protocol, no consensus mechanism, no identity provider. The conservation law holds because it is an algebraic identity, not because anyone agreed to follow it.
+6. **The math is the arithmetic of accountability, not the whole of it** (*v1.0.1 wording; v1.0.0 read "No trust, no protocol, no consensus mechanism, no identity provider"*): the conservation identity holds because it is algebra, not because anyone agreed to follow it, and each organization can recompute its own consumption without a shared intermediary *for that arithmetic*. What remains assumed is the honesty of each executor (§9) — the identity cannot detect an environment that lies about what it consumed, clones the agent, or omits an interaction. Cross-party non-repudiation needs a signed, externally anchored witness, which this reference implementation does not provide.
 
 In an era where multi-party agent deployments are becoming standard — agents traversing cloud providers, compliance validators, data processors, and result aggregators — the question of accountability is usually answered with more protocols. We propose answering it with less: a single conservation law, enforced by construction, invariant across all boundaries.
 

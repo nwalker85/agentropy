@@ -479,23 +479,30 @@ class Node:
                 if current_time >= rotation_time:
                     self._key_secrets[key_class] = new_secret
     
-    def process(self, agent: Agent, factory: AgentFactory = None) -> InteractionResult:
+    def process(
+        self,
+        agent: Agent,
+        factory: AgentFactory = None,
+        max_layers: Optional[int] = None,
+    ) -> InteractionResult:
         """
         The node processes an agent. This is the fundamental interaction.
-        
+
         Steps:
             1. Exist (the node already has its properties)
             2. Agent enters (or is blocked by mass gate)
             3. Decrypt whatever the node has affinity for
+               (at most `max_layers` of them when a caller declares a price;
+               None = every affinity layer, the v1.0.0 behaviour)
             4. Record transaction in local ledger
             5. Apply accretion if conditions met (natural process)
             6. Return result
-        
+
         The node does not "decide" to do any of this.
         It happens because physics.
         """
         env = self.as_environment()
-        result = interact(agent, env)
+        result = interact(agent, env, max_layers=max_layers)
         
         # Record in ledger
         if result.agent_could_enter:
@@ -837,9 +844,17 @@ class Topology:
             self.edges.setdefault(to_id, set()).add(from_id)
     
     def reachable_from(self, node_id: str) -> list[Node]:
-        """Get nodes reachable from a given node."""
+        """
+        Get nodes reachable from a given node, in a deterministic order.
+
+        v1.0.1: neighbours are returned sorted by node id. `self.edges` holds
+        `set[str]`, whose iteration order depends on the process's string hash
+        seed (PYTHONHASHSEED). `AgentBehavior.choose_node` draws over the
+        candidate list in order, so an unsorted iteration made every seeded
+        run differ between processes (Overmier review, reproducibility §).
+        """
         neighbor_ids = self.edges.get(node_id, set())
-        return [self.nodes[nid] for nid in neighbor_ids if nid in self.nodes]
+        return [self.nodes[nid] for nid in sorted(neighbor_ids) if nid in self.nodes]
     
     def commit_all(self):
         """Flush all local ledgers to public ledger."""

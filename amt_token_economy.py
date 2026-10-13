@@ -168,18 +168,28 @@ class ToolGateway:
         factory: AgentFactory = None,
     ) -> dict:
         """
-        Process a tool call: charge mass, execute tool, return result.
+        Process a tool call: check the price, charge exactly it, execute, record.
 
-        Flow:
-            1. Node.process(agent) -> interact() strips layers (payment)
-            2. If agent survived and layers were stripped: tool succeeded
-            3. If no layers stripped (no affinity): tool not available
-            4. If agent died: tool failed (agent couldn't afford it)
-            5. Record call in log
-            6. Return result
+        Flow (v1.0.1 — the declared price is enforced):
+            1. Mass gate: agent outside the node's window -> "blocked", nothing charged
+            2. Count the agent's layers of the tool's key class
+            3. Zero layers -> "no_affinity", nothing charged (tool not available)
+            4. Fewer layers than base_cost -> "insufficient_funds"; the payment is
+               REJECTED BEFORE any layer is consumed and the tool does not execute
+            5. Otherwise Node.process(agent, max_layers=base_cost) strips exactly
+               base_cost layers of the class; further layers of the class survive
+            6. If the agent died paying: "died_paying" (tool does not execute)
+            7. Else: "success"
+            8. Record the call in the gateway log
 
-        The conservation law is enforced inside interact().
-        We don't need to check it. It just holds.
+        v1.0.0 stripped every layer of the class and reported success whenever
+        at least one layer was removed and the agent survived; base_cost was
+        never consulted. See docs/reviews/2026-08-22-overmier-v1.0.0/ items 3-9.
+
+        The conservation law is still enforced inside interact() for the
+        layers that are consumed. Refused payments consume nothing and are
+        recorded only in the gateway call log (the local ledger records
+        interactions, and a refusal is not one).
         """
         if self._node is None:
             raise RuntimeError(f"Gateway '{self.name}' not initialized. Call initialize() first.")
@@ -189,34 +199,41 @@ class ToolGateway:
             f"{agent.mass}:{agent.layer_count}".encode()
         ).hexdigest()[:16]
 
-        # Payment via conservation-governed interaction
-        result = self._node.process(agent, factory)
+        key_class = self.tool_class.key_class
+        price = self.tool_class.base_cost
+        held = sum(1 for layer in agent.layers if layer.key_class == key_class)
+        result = None
 
-        # Determine outcome
-        if not result.agent_could_enter:
-            outcome = "blocked"
-            success = False
-        elif result.layers_stripped == 0:
-            outcome = "no_affinity"
-            success = False
-        elif not result.agent_survived:
-            outcome = "died_paying"
-            success = False
+        if not self._node.as_environment().can_enter(agent):
+            outcome, success = "blocked", False
+        elif held == 0:
+            outcome, success = "no_affinity", False
+        elif held < price:
+            outcome, success = "insufficient_funds", False
         else:
-            outcome = "success"
-            success = True
+            # Payment via conservation-governed interaction, bounded to the price
+            result = self._node.process(agent, factory, max_layers=price)
+            assert result.layers_stripped == price, (
+                f"Price enforcement failed: charged {result.layers_stripped}, declared {price}"
+            )
+            if not result.agent_survived:
+                outcome, success = "died_paying", False
+            else:
+                outcome, success = "success", True
 
         call_record = {
             "agent_hash": agent_hash,
             "tool_name": self.tool_name,
             "tool_class": self.tool_class.name,
             "gateway": self.name,
+            "declared_cost": price,
+            "layers_held": held,
             "mass_before": mass_before,
             "mass_after": agent.mass,
-            "layers_charged": result.layers_stripped,
-            "mass_charged": result.total_consumed,
-            "signal": result.total_signal,
-            "loss": result.total_loss,
+            "layers_charged": result.layers_stripped if result else 0,
+            "mass_charged": result.total_consumed if result else 0,
+            "signal": result.total_signal if result else 0,
+            "loss": result.total_loss if result else 0,
             "outcome": outcome,
             "success": success,
             "timestamp": time.time(),

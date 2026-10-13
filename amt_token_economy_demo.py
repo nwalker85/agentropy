@@ -204,19 +204,30 @@ print(f"\n  Successful calls: {len(succeeded)}")
 print(f"  Failed calls:     {len(failed)}")
 print(f"  Agent alive:      {budget_agent.alive}")
 
-print("""
-KEY INSIGHT:
-  The budget agent couldn't afford GPT-4 (needs 3 beta, had 1).
-  It couldn't afford storage (needs 2 gamma, had 1).
-  It couldn't afford batch compute (needs 4 delta, had 0).
-
-  The ONLY tools it could use were cheap API calls (alpha) and
-  admin ops (epsilon). But it had no epsilon layers either.
-
-  This isn't a policy decision. Nobody wrote "block poor agents."
-  The conservation law made it physically impossible to call
-  tools the agent couldn't pay for. Mass IS the access control.
-""")
+# KEY INSIGHT — computed from the call log, not asserted in advance (v1.0.1).
+# v1.0.0 printed "couldn't afford GPT-4" here while the log above recorded
+# the 1-beta-layer payment as a success (Overmier review, token economy §).
+print("\nKEY INSIGHT (derived from this run's call log):")
+for call in budget_history:
+    verdict = {
+        "success": f"paid exactly {call['declared_cost']} layer(s) — tool executed",
+        "insufficient_funds": f"REJECTED before execution — held {call['layers_held']}, price {call['declared_cost']}",
+        "no_affinity": "no layers of this class — tool not available, nothing charged",
+        "died_paying": "paid the price and reached zero mass — tool did not execute",
+        "blocked": "outside the mass gate — nothing charged",
+    }.get(call["outcome"], call["outcome"])
+    print(f"  {call['gateway']:>15s}: {verdict}")
+rejected = [c for c in budget_history if c["outcome"] == "insufficient_funds"]
+print()
+if rejected:
+    print(f"  {len(rejected)} call(s) were refused for insufficient funds, and the refused")
+    print("  layers are still on the agent. The declared price is enforced by the gateway")
+    print("  (v1.0.1). Nobody wrote \"block poor agents\" — but note what does the blocking:")
+    print("  a gateway that counts layers against a declared price. The conservation law")
+    print("  governs what happens to the layers that ARE consumed; the price check is a")
+    print("  gateway rule layered on top of it.")
+else:
+    print("  No call was refused in this run; every visited gateway was affordable.")
 
 
 # =============================================================================
@@ -383,6 +394,7 @@ total_calls = 0
 agents_alive = 0
 calls_by_class = Counter()
 mass_by_class = Counter()
+calls_by_outcome = Counter()
 agent_stats = []
 
 t0 = time.time()
@@ -411,6 +423,7 @@ for i in range(N_AGENTS):
     # Track stats
     for call in history_i:
         total_calls += 1
+        calls_by_outcome[call["outcome"]] += 1
         lhs = call["mass_before"]
         rhs = call["mass_after"] + call["signal"] + call["loss"]
         if lhs != rhs:
@@ -440,6 +453,9 @@ print(f"  Total tool calls:    {total_calls:,}")
 print(f"  Successful calls:    {sum(calls_by_class.values()):,}")
 print(f"  Agents surviving:    {agents_alive} ({agents_alive/N_AGENTS:.1%})")
 print(f"  Conservation violations: {all_violations}")
+print(f"  Calls by outcome (v1.0.1 — refused payments are recorded, not charged):")
+for outcome, n in sorted(calls_by_outcome.items()):
+    print(f"    {outcome:<20s} {n:>6,}")
 
 if all_violations == 0:
     print(f"\n  C_{{n+1}} + S_{{n+1}} + L_n = C_n")

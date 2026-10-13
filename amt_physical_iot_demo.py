@@ -378,9 +378,16 @@ def demo_6_scale():
     rng = random.Random(42)
     route = ["campsite", "highway", "mountain", "remote", "destination"]
 
+    # ONE topology shared by every agent (v1.0.1). v1.0.0 rebuilt the route
+    # inside the loop, so no agent ever saw the battery another agent had drawn
+    # down and the paper's "previous agents tighten the gate" was never exercised
+    # (Overmier review, physical IoT §).
+    topo = build_route_topology()
+
     results = []
     total_interactions = 0
     total_violations = 0
+    total_blocked = 0
     survivors = 0
     total_layers_stripped = 0
 
@@ -402,7 +409,6 @@ def demo_6_scale():
             sensor_reads=sensors,
         )
 
-        topo = build_route_topology()
         agent = FACTORY.build_agent(budget.to_layer_specs())
         initial_mass = agent.mass
 
@@ -413,6 +419,7 @@ def demo_6_scale():
         agent_interactions = 0
         agent_layers = 0
         locations_entered = 0
+        agent_blocked = 0
         for entry in history:
             if entry["entered"]:
                 agent_interactions += 1
@@ -422,9 +429,12 @@ def demo_6_scale():
                 if lhs != rhs:
                     agent_violations += 1
                 locations_entered += 1
+            else:
+                agent_blocked += 1
 
         total_interactions += agent_interactions
         total_violations += agent_violations
+        total_blocked += agent_blocked
         total_layers_stripped += agent_layers
 
         if agent.alive:
@@ -485,10 +495,43 @@ def demo_6_scale():
         bar = "█" * int(rate / 5)
         print(f"  {label:<12s} {len(agents):>6d} {survived:>10d} {rate:>7.1f}% {avg_loc:>13.1f}  {bar}")
 
-    print(f"\nKEY INSIGHT:")
-    print(f"  Battery budget directly predicts survival distance.")
-    print(f"  No hand-coded power management. No battery alerts.")
-    print(f"  Conservation law IS the battery management system.")
+    # Encode/decode fidelity (v1.0.1): the mapping is NOT numerically invertible.
+    # GCM overhead inflates the decoded mass and to_layer_specs() quantises to
+    # 256-B layers with a 512-B payload cap (Overmier review, physical IoT §).
+    print(f"\n  Requested vs decoded budget (paper §5.1 agent), single encode/decode:")
+    ref = ResourceBudget(battery_wh=50, bandwidth_mb=100, storage_ops=500, cpu_seconds=30, sensor_reads=50)
+    decoded = ResourceBudget.interpret_agent_mass(FACTORY.build_agent(ref.to_layer_specs()))
+    print(f"  {'Resource':<10s} {'Requested':>10s} {'Decoded':>10s} {'Error':>8s}")
+    print(f"  {'─' * 42}")
+    for res_type, requested in (("battery", 50.0), ("bandwidth", 100.0), ("storage", 500.0),
+                                ("cpu", 30.0), ("sensor", 50.0)):
+        got = decoded.get(res_type, 0.0)
+        err = (got - requested) / requested * 100 if requested else 0.0
+        print(f"  {res_type:<10s} {requested:>10.3f} {got:>10.3f} {err:>+7.1f}%")
+
+    # KEY INSIGHT — stated from the measured result (v1.0.1). v1.0.0 printed
+    # "Battery budget directly predicts survival distance" unconditionally,
+    # including on the reference run where every tier reached 5.0 locations
+    # with 0 survivors (Overmier review, physical IoT §).
+    heaviest = max(r["initial_mass"] for r in results) if results else 0
+    gate_floor = 500 * 1024
+    avg_by_bin = {label: (sum(a["locations_entered"] for a in agents) / len(agents))
+                  for label, agents in bins.items() if agents}
+    print(f"\nKEY INSIGHT (derived from this run):")
+    if len(set(round(v, 2) for v in avg_by_bin.values())) <= 1:
+        print(f"  Every battery tier averaged {next(iter(avg_by_bin.values())):.1f} locations entered;")
+        print(f"  battery budget did NOT separate survival distance in this run.")
+    else:
+        lo = min(avg_by_bin, key=avg_by_bin.get)
+        hi = max(avg_by_bin, key=avg_by_bin.get)
+        print(f"  Average locations entered ranged from {avg_by_bin[lo]:.1f} ({lo}) to "
+              f"{avg_by_bin[hi]:.1f} ({hi}).")
+    print(f"  Agents blocked by a mass gate: {total_blocked} of {num_agents * len(route)} visits.")
+    print(f"  Heaviest agent in this run: {heaviest:,} B; tightest gate floor: {gate_floor:,} B.")
+    if heaviest < gate_floor:
+        print(f"  The gate cannot bind for any agent in this configuration (heaviest agent is")
+        print(f"  {gate_floor / heaviest:.1f}x lighter than the floor), so load-shedding is NOT")
+        print(f"  exercised here, shared topology or not. Depletion is; gating is not.")
 
 
 # =============================================================================

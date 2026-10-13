@@ -9,7 +9,7 @@
 
 ## Abstract
 
-When an autonomous agent calls a tool through a gateway, how should it be charged? Traditional approaches — API keys with rate limits, credit-based billing, token metering — all require external enforcement: a billing service, a rate limiter, a credit ledger. We present an alternative where every tool call is a conservation-governed payment. Under Agent Mass Theory (AMT), an agent's mass consists of encrypted layers organized by key class. A tool gateway holds secrets for exactly one key class. When an agent enters the gateway, layers of that class are decrypted and consumed — this decryption IS the payment. The conservation law `C_{n+1} + S_{n+1} + L_n = C_n` ensures that mass cannot be created, double-spent, or inflated. An agent without layers of the required class simply cannot pay, and the conservation law — not a policy engine — prevents the call. We demonstrate this with five tool classes at five price points (API calls: 1 layer, LLM inference: 3 layers, storage: 2 layers, compute: 4 layers, admin: 1 layer), showing that budget-constrained agents are physically unable to call expensive tools, that behavioral divergence emerges from budget composition alone, and that at population scale (200 agents, 2,113 tool calls), zero conservation violations occur. No pricing protocol. No credit system. No rate limiter. The physics IS the pricing.
+When an autonomous agent calls a tool through a gateway, how should it be charged? Traditional approaches — API keys with rate limits, credit-based billing, token metering — all require external enforcement: a billing service, a rate limiter, a credit ledger. We present an alternative where every tool call is a conservation-governed payment. Under Agent Mass Theory (AMT), an agent's mass consists of encrypted layers organized by key class. A tool gateway holds secrets for exactly one key class. When an agent enters the gateway, layers of that class are decrypted and consumed — this decryption IS the payment. The conservation law `C_{n+1} + S_{n+1} + L_n = C_n` ensures that no mass is created outside the factory and that every consumed byte is accounted for. (v1.0.1 erratum: it does not, by itself, prevent double-spending — a copied agent holds copyable ciphertext; see §8.2.) An agent without layers of the required class simply cannot pay, and the gateway's price check — a rule layered on the conservation law, not the law itself — refuses the call. We demonstrate this with five tool classes at five price points (API calls: 1 layer, LLM inference: 3 layers, storage: 2 layers, compute: 4 layers, admin: 1 layer), showing that budget-constrained agents are physically unable to call expensive tools, that behavioral divergence emerges from budget composition alone, and that at population scale (200 agents, 2,113 tool calls), zero conservation violations occur. No pricing protocol. No credit system. No rate limiter. The physics IS the pricing.
 
 ---
 
@@ -46,8 +46,8 @@ A conservation law is not a protocol. It is a constraint that holds at every int
 If we map tool classes to key classes and require payment via layer consumption, we get a token economy where:
 
 - **Accounting** is a consequence of conservation (every byte accounted for)
-- **Enforcement** is a consequence of physics (no layers = no payment = no tool call)
-- **Trust** is unnecessary (the math enforces itself)
+- **Enforcement** has two parts: no layers = no payment (a consequence of key affinity), and *exactly the declared price is charged* (a gateway rule, enforced in code since v1.0.1 — v1.0.0 stripped every matching layer and never consulted the price)
+- **Trust** in the arithmetic is unnecessary (each party can recompute it); trust in the *executor's honesty* is assumed — see §11 and Walker 2026a §9
 
 ---
 
@@ -122,23 +122,26 @@ These prices are not arbitrary. They are design decisions frozen into the agent'
 
 A **tool gateway** is an AMT environment that holds exactly one secret — for its tool class's key class. When an agent enters:
 
-1. The environment attempts to decrypt all layers matching its key class
-2. Matching layers are consumed (payment extracted)
-3. The conservation law is verified: `mass_before = mass_after + signal + loss`
-4. If layers were stripped: the tool call succeeds
-5. If no layers matched (agent has no affinity): the call fails silently
-6. If the agent dies during payment: the call fails
+1. The gateway counts the agent's layers of its key class against the declared price (`base_cost`)
+2. Fewer layers than the price: the call is refused as `insufficient_funds` **before** any layer is consumed
+3. Otherwise exactly `base_cost` matching layers are consumed (payment extracted); further layers of the class survive
+4. The conservation law is verified on the consumed layers: `mass_before = mass_after + signal + loss`
+5. If the agent survives payment: the tool call succeeds
+6. If no layers matched (agent has no affinity): the call fails silently, nothing charged
+7. If the agent dies during payment: the call fails
+
+*v1.0.1 erratum.* In v1.0.0 the gateway stripped **every** layer of its class and reported success whenever at least one layer was removed and the agent survived; `base_cost` was never consulted. An agent holding one beta layer was charged one layer and recorded as a successful three-layer LLM call; an agent holding twelve was charged all twelve for one call (Overmier 2026, review items 3, 5–9). The list above describes the v1.0.1 implementation.
 
 ```
 Gateway("GPT-4", key_class="beta", cost=3)
     holds: secret_beta
-    strips: all beta-class layers
+    strips: exactly 3 beta-class layers per call (refuses if fewer than 3 are held)
     ignores: alpha, gamma, delta, epsilon layers
 ```
 
 ### 4.2 Composition, Not Inheritance
 
-The gateway wraps a standard AMT `Node` via composition. It delegates to `node.process()` which calls `interact()`. The conservation law is enforced inside `interact()` — the gateway doesn't even need to check it. This is critical: **the gateway cannot cheat**. Even a malicious gateway implementation cannot violate conservation because the law is enforced at the interaction level, not the gateway level.
+The gateway wraps a standard AMT `Node` via composition. It delegates to `node.process(agent, max_layers=base_cost)` which calls `interact()`. The conservation law is enforced inside `interact()` — the gateway doesn't need to check it. What the gateway *does* own is the price: counting held layers against `base_cost` and bounding consumption to it. A gateway that skipped that check would still satisfy conservation and still overcharge — which is exactly what v1.0.0 did. Conservation constrains *how consumed bytes are accounted for*; it does not constrain *how many are consumed*. (v1.0.0 said here that "the gateway cannot cheat"; that was true of the arithmetic and false of the price.)
 
 ### 4.3 The Call Log
 
@@ -219,46 +222,53 @@ We implement the token economy with:
 
 ### 7.2 Individual Agent Scenarios
 
-**Rich Agent** (36 layers, 2,208 B): Successfully calls Config (1 epsilon), Weather (7 alpha), GPT-4 (12 beta), Database (6 gamma), and dies paying for Batch Compute (8 delta). Conservation verified at every step: 5 interactions, 0 violations.
+**Rich Agent** (36 layers, 2,208 B): Successfully calls Config (1 epsilon), Weather (1 alpha), GPT-4 (3 beta), Database (2 gamma) and Batch Compute (4 delta) — exactly the declared price each time — and finishes alive at 1,372 B with budget to spare. Conservation verified at every step: 5 interactions, 0 violations. *(v1.0.0 reported this agent being drained of 7, 12, 6 and 8 layers respectively and dying at Batch Compute; that was the gateway stripping every layer of its class, not the price.)*
 
-**Budget Agent** (6 layers, 328 B): Passes through Config (no epsilon affinity — no charge), calls Weather (4 alpha layers), partially pays for GPT-4 (1 beta layer stripped, but needs 3 — partial payment, tool still fires), dies paying for Database (1 gamma). Only 2 successful calls versus the rich agent's 4.
+**Budget Agent** (6 layers, 328 B): Passes through Config (no epsilon affinity — no charge), calls Weather (1 alpha), is **refused** at GPT-4 (holds 1 beta, price 3 — `insufficient_funds`, nothing consumed), refused at Database (holds 1 gamma, price 2), and has no affinity for Batch Compute. One successful call versus the rich agent's five; it survives with its unspent layers. *(v1.0.0 recorded the one-layer GPT-4 payment as a success and then printed that the agent "couldn't afford" it — the log and the prose disagreed. Overmier 2026, item 7.)*
 
 ### 7.3 Population Scale
 
 200 agents with Pareto-distributed budgets (reflecting real-world wealth distribution):
 
-| Metric | Value |
-|--------|-------|
-| Total agents | 200 |
-| Total tool calls | 2,113 |
-| Successful calls | 449 |
-| Survival rate | 45.5% |
-| **Conservation violations** | **0** |
+| Metric | v1.0.1 reference run | v1.0.0 |
+|--------|-------|-------|
+| Total agents | 200 | 200 |
+| Total tool calls (all outcomes) | 2,574 | 2,113 |
+| Successful calls | 468 | 449 |
+| Refused — insufficient funds | 728 | (not an outcome in v1.0.0) |
+| No affinity | 1,373 | — |
+| Died paying | 5 | — |
+| Survival rate | 97.5% (195) | 45.5% (91) |
+| **Conservation violations** | **0** | **0** |
 
-**Tool usage by class:**
+*The v1.0.1 column is deterministic across processes (hash-seed-independent neighbour order). The v1.0.0 column was one draw: the reviewer observed 2,090–2,206 calls and 100–106 survivors across three `PYTHONHASHSEED` values; the author 2,093–2,125 and 88–107. Survival rose because the gateway no longer drains every layer of its class.*
 
-| Class | Calls | Mass Consumed |
-|-------|-------|---------------|
-| admin | 53 | 14,196 B |
-| api_call | 109 | 19,872 B |
-| compute | 74 | 11,036 B |
-| llm_inference | 115 | 23,436 B |
-| storage_op | 98 | 17,144 B |
+**Tool usage by class (successful calls, v1.0.1):**
 
-**Budget-behavior correlation:**
-- Rich agents (>1,000 B): average 3.8 successful calls
-- Poor agents (≤500 B): average 1.8 successful calls
-- Rich agents make **2.1x** more successful tool calls
+| Class | Calls | Mass Consumed | v1.0.0 calls / mass |
+|-------|-------|---------------|------|
+| admin | 97 | 6,364 B | 53 / 14,196 B |
+| api_call | 211 | 13,620 B | 109 / 19,872 B |
+| compute | 23 | 6,096 B | 74 / 11,036 B |
+| llm_inference | 60 | 11,200 B | 115 / 23,436 B |
+| storage_op | 77 | 9,240 B | 98 / 17,144 B |
+
+**Budget-behavior correlation (v1.0.1):**
+- Rich agents (>1,000 B): average 10.0 successful calls (v1.0.0: 3.8)
+- Poor agents (≤500 B): average 1.0 successful calls (v1.0.0: 1.8)
+- Rich agents make **9.8x** more successful tool calls (v1.0.0: 2.1x). The gap widened because refused payments leave poor agents' layers unspent and unusable, while rich agents are no longer drained to death.
 
 ### 7.4 Conservation Proof
 
 Every tool call is a conservation-governed interaction. At population scale:
 
 ```
-For all 2,113 tool calls:
+For all 2,574 tool calls (v1.0.1; 2,113 in v1.0.0):
     C_{n+1} + S_{n+1} + L_n = C_n
     Verified. Zero violations.
 ```
+
+This is an accounting identity (Walker 2026 Appendix B): `loss` is defined as the consumed mass not returned as signal, so the equation cannot fail in a correct implementation. Zero violations confirms the bookkeeping, not a law of nature (*v1.0.1 wording*).
 
 The conservation law holds regardless of:
 - Agent budget level
@@ -277,9 +287,13 @@ The token economy exhibits five fundamental economic properties, all emerging fr
 
 Conservation prevents mass creation. The total mass in the system can only decrease (via signal extraction and loss) or remain constant (when no interactions occur). New mass enters only through the factory — the monetary authority — which creates agents with specific layer compositions. There is no mechanism for agents, gateways, or any system component to create mass ex nihilo.
 
-### 8.2 No Double-Spending
+### 8.2 Local Destruction, Not Double-Spend Resistance
 
-Layers are destroyed upon decryption. An AES-256-GCM ciphertext, once decrypted, ceases to exist as a layer. The plaintext becomes signal (if non-empty) or loss (if empty/overhead). The encrypted form is gone. An agent cannot present the same layer twice because after the first presentation, the layer no longer exists.
+*Rewritten in v1.0.1; the v1.0.0 heading was "No Double-Spending" and the paragraph was wrong as written.*
+
+When a layer is decrypted, the reference implementation removes it from the agent's layer list. Within one honest process the agent cannot present that layer again, and the plaintext becomes signal (if non-empty) or loss (if empty/overhead). That is all AES-256-GCM gives: confidentiality and integrity of the bytes. It does not give a byte string uniqueness, custody, or one-time existence. The ciphertext is ordinary data; a copy of the agent taken before decryption still holds it, and a gateway that receives the copy will accept the same payment a second time. The reference implementation demonstrates this directly (`tests/test_known_limitations.py`, `docs/reviews/2026-08-22-overmier-v1.0.0/`). Walker 2026a §9 already listed "clone the agent (copy layers before decrypting)" as a move available to a dishonest environment; this section previously claimed the opposite.
+
+Preventing replay requires an authority outside the encryption scheme that can answer whether a specific capability is valid *now* and whether it has already been consumed — a transactional ledger, signed state, secure hardware, or a settlement protocol. That is v2 work, with its own threat model. The v1.0.x claim is narrower: **destruction is irreversible within the holder's process, and every byte consumed is accounted for.**
 
 ### 8.3 Perfect Audit
 
@@ -294,13 +308,13 @@ No observer can determine:
 
 ### 8.4 Emergent Pricing
 
-Per-key pricing is structural, not transactional. A 3-layer LLM call costs exactly 3 layers of the appropriate key class. This cost does not fluctuate with demand, time of day, or agent identity.
+Per-key pricing is structural, not transactional. A 3-layer LLM call costs exactly 3 layers of the appropriate key class — enforced by the gateway since v1.0.1 (`ToolGateway.process_tool_call`; asserted in `tests/test_price_enforcement.py`). This cost does not fluctuate with demand, time of day, or agent identity.
 
 However, per-visit pricing is dynamic. An environment's total cost is determined by how many key classes it holds — its hazard surface. Under load, an environment can arm itself with additional keys, stripping more layer types per visit without changing the cost of any individual key class. This creates a natural throttle: fixed unit prices with dynamic aggregate cost, governed entirely by key rotation rather than rate negotiation.
 
 ### 8.5 Budget Stratification
 
-An agent's tool access is determined entirely by its layer composition. No access control list, permission matrix, or role-based policy intervenes. An agent with zero delta layers simply cannot call compute tools. An agent with 12 beta layers has exactly 4 LLM calls. This creates natural economic tiers without any tier-management infrastructure.
+An agent's tool access is determined by its layer composition and the gateway's declared price. No access control list, permission matrix, or role-based policy intervenes. An agent with zero delta layers simply cannot call compute tools. An agent with 12 beta layers has exactly 4 LLM calls (true since v1.0.1; in v1.0.0 it had one call that cost all twelve). This creates natural economic tiers without any tier-management infrastructure — but note that the price check is a gateway rule; what the conservation law contributes is that the tiers cannot be inflated from inside the agent.
 
 ---
 
@@ -332,7 +346,7 @@ LangChain's callback system and AutoGPT's budget tracking monitor agent spending
 
 ### Key Differentiator
 
-All related systems are **protocols** — agreements about how accounting should work. AMT's token economy is a **conservation law** — a physical constraint on how accounting *must* work. The distinction: a protocol can be violated by a sufficiently creative adversary; a conservation law cannot, because it is enforced by the mathematical structure of the interaction itself.
+All related systems are **protocols** — agreements about how accounting should work. AMT's token economy rests on an **accounting identity** — `loss` is defined as `mass − signal`, so the books balance by construction (Walker 2026 Appendix B: "It holds because subtraction works"). The distinction the v1.0.0 text drew — that a protocol can be violated and a conservation law cannot — is true of the arithmetic and only the arithmetic. The identity does not prevent a copied agent from paying twice, a gateway from ignoring its price, or an executor from lying about what it consumed; those are protocol-level properties and need protocol-level (or ledger-level) enforcement. *(Rewritten in v1.0.1.)*
 
 ---
 
@@ -374,13 +388,13 @@ The natural next step is mapping this token economy onto Ravenhelm's Bifrost too
 
 We have demonstrated that conservation-governed agent mass provides a complete token economy without any pricing protocol, credit system, or rate limiter:
 
-- **Tool calls are interactions.** A gateway is an environment. Payment is decryption. Conservation is enforcement.
-- **Layers are currency.** Each key class is a denomination. Each tool class has a price in layers.
+- **Tool calls are interactions.** A gateway is an environment. Payment is decryption. Conservation is the accounting; the price check is the enforcement.
+- **Layers are currency.** Each key class is a denomination. Each tool class has a price in layers, charged exactly (v1.0.1).
 - **Budget is mass profile.** An agent's economic identity is its layer composition.
 - **Behavioral divergence is emergent.** Same topology, same parameters, different budgets → different tool usage patterns.
-- **Conservation is absolute.** 200 agents, 2,113 tool calls, zero violations.
+- **The accounting identity held on every call.** 200 agents, 2,574 tool calls (v1.0.1 reference run; 2,113 in v1.0.0), zero violations.
 
-The math is the market. The physics is the pricing. No protocol needed.
+What this does not provide, and v1.0.0 claimed it did: double-spend resistance across copies, and price enforcement without a gateway rule. See §8.2 and the v1.0.1 errata (`paper/ERRATA-v1.0.1.md`).
 
 ---
 
@@ -400,6 +414,36 @@ Key classes:
 ## Appendix B: Full Scale Results
 
 Population: 200 agents, Pareto-distributed budgets
+
+v1.0.1 reference run (`python3 amt_token_economy_demo.py`, any `PYTHONHASHSEED`):
+
+```
+Agents:              200
+Total tool calls:    2,574
+Successful calls:    468
+Agents surviving:    195 (97.5%)
+Conservation violations: 0
+Calls by outcome:
+  died_paying               5
+  insufficient_funds      728
+  no_affinity           1,373
+  success                 468
+
+Tool Usage by Class:
+  Class              Calls       Mass
+  admin                 97      6,364
+  api_call             211     13,620
+  compute               23      6,096
+  llm_inference         60     11,200
+  storage_op            77      9,240
+
+Budget-Calls Correlation:
+  Rich agents (>1000B):  avg 10.0 successful calls
+  Poor agents (<=500B):  avg 1.0 successful calls
+  Rich agents make 9.8x more tool calls.
+```
+
+v1.0.0 reference run, retained for the record (one process-dependent draw):
 
 ```
 Agents:              200
